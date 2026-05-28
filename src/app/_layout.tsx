@@ -14,6 +14,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="screens/auth/LoginScreenApp" />
           <Stack.Screen name="screens/auth/RegisterScreenApp" />
+          <Stack.Screen name="screens/auth/VerificationScreenApp" />
           <Stack.Screen name="screens/other/HomeScreenApp" />
         </Stack>
       </ThemeProvider>

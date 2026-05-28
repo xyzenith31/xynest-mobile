@@ -8,14 +8,20 @@ const getDevelopmentBaseUrl = (): string => {
     return 'http://localhost:3000';
   }
 
-  const debuggerHost = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
-  const localhost = debuggerHost?.split(':').shift();
+  const hostUri = 
+    Constants.expoConfig?.hostUri || 
+    (Constants.manifest2 as any)?.extra?.expoGo?.debuggerHost ||
+    (Constants.manifest as any)?.debuggerHost;
 
-  if (localhost) {
-    return `http://${localhost}:3000`;
+  if (hostUri) {
+    const localhost = hostUri.split(':').shift();
+    if (localhost) {
+      return `http://${localhost}:3000`;
+    }
   }
   
-  return 'http://localhost:3000';
+  const FALLBACK_IP = '10.0.2.2';
+  return `http://${FALLBACK_IP}:3000`;
 };
 
 export const ENVIRONMENT = PRODUCTION_URL ? 'production' : 'development';
