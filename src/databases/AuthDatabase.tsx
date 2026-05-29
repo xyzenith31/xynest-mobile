@@ -18,6 +18,12 @@ class AuthDatabase {
     this.initDatabase();
   }
 
+  private async ensureDbReady() {
+    if (!this.db) {
+      await this.initDatabase();
+    }
+  }
+
   public static getInstance(): AuthDatabase {
     if (!AuthDatabase.instance) {
       AuthDatabase.instance = new AuthDatabase();
@@ -41,8 +47,9 @@ class AuthDatabase {
   }
 
   public async saveSession(user: UserSession, token: string): Promise<void> {
+    await this.ensureDbReady();
     if (!this.db) return;
-    await this.db.runAsync('DELETE FROM session'); // Hapus sesi lama
+    await this.db.runAsync('DELETE FROM session');
     await this.db.runAsync(
       'INSERT INTO session (user_data, session_token) VALUES (?, ?)',
       [JSON.stringify(user), token]
@@ -50,12 +57,14 @@ class AuthDatabase {
   }
 
   public async getSession(): Promise<UserSession | null> {
+    await this.ensureDbReady();
     if (!this.db) return null;
     const result: any = await this.db.getFirstAsync('SELECT user_data FROM session LIMIT 1');
     return result ? JSON.parse(result.user_data) : null;
   }
 
   public async getToken(): Promise<string | null> {
+    await this.ensureDbReady();
     if (!this.db) return null;
     const result: any = await this.db.getFirstAsync('SELECT session_token FROM session LIMIT 1');
     return result ? result.session_token : null;

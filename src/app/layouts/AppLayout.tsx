@@ -19,26 +19,24 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     let isMounted = true;
 
     const checkSession = async () => {
-      // Cegah request menumpuk jika koneksi sedang lambat
       if (isCheckingRef.current) return;
       
       const token = await authDb.getToken();
-      if (!token) return; // Jika sudah tidak ada sesi lokal, diamkan
+      if (!token) return;
 
       isCheckingRef.current = true;
       try {
         const isValid = await DeviceService.checkSessionValidity();
-        
-        if (!isValid && isMounted) {
+        if (isValid === false && isMounted) {
           await authDb.clearSession();
           Alert.alert(
             "Sesi Berakhir", 
-            "Sesi Anda di perangkat ini telah dihapus oleh perangkat lain. Anda harus masuk kembali.",
+            "Sesi Anda di perangkat ini telah dihapus atau berakhir. Anda harus masuk kembali.",
             [{ text: "OK", onPress: () => router.replace('/screens/auth/LoginScreenApp') }]
           );
         }
-      } catch (err) {
-        console.log("Error checking session:", err);
+      } catch (err: any) {
+        console.log("Error network/server saat mengecek sesi:", err);
       } finally {
         if (isMounted) isCheckingRef.current = false;
       }
