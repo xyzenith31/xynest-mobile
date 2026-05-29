@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
-import { AuthService } from '@/services/AuthService';
+import { RegisterService } from '@/services/RegisterService';
 import AuthLayout from '@/app/layouts/AuthLayout';
 
 export default function RegisterScreenApp() {
@@ -34,76 +34,78 @@ export default function RegisterScreenApp() {
   };
 
   const handleRegisterSubmit = async () => {
-    if (!email.trim() || !username.trim() || !fullName.trim() || !phoneNumber.trim() || !gender || !birthDate.trim()) {
-      return Alert.alert('Error', 'Semua data registrasi wajib diisi, bro!');
+    if (!email || !username || !fullName || !gender || !birthDate) {
+      return Alert.alert('Error', 'Harap isi semua kolom wajib!');
+    }
+    const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!datePattern.test(birthDate)) {
+      return Alert.alert('Error', 'Format tanggal lahir tidak valid (DD/MM/YYYY)');
     }
 
     setLoading(true);
     try {
-      const res = await AuthService.register({
+      const parts = birthDate.split('/');
+      const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      const payload = {
         email: email.trim(),
         username: username.trim(),
         full_name: fullName.trim(),
-        phone_number: phoneNumber.trim(),
-        gender: gender,
-        birth_date: birthDate.trim(),
-      });
+        phone_number: phoneNumber.trim() || undefined,
+        gender,
+        birth_date: isoDate
+      };
+
+      const res = await RegisterService.register(payload);
 
       if (res.success) {
-        Alert.alert('Sukses', res.message || 'Registrasi berhasil, silakan verifikasi akun Anda.');
-        
+        setLoading(false);
         router.push({
           pathname: '/screens/auth/VerificationScreenApp' as any,
           params: { type: 'register', identifier: email.trim() }
         });
       } else {
-        Alert.alert('Gagal', res.error || 'Terjadi kesalahan saat mendaftar.');
+        Alert.alert('Gagal', res.error || 'Gagal melakukan registrasi.');
+        setLoading(false);
       }
-    } catch (err) {
-      Alert.alert('Error', 'Gagal terhubung ke API server registrasi.');
-    } finally {
+    } catch (err: any) {
+      Alert.alert('Error', 'Gagal terhubung ke API server. Cek log console bro!');
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout 
-      title="Daftar Akun" 
-      subtitle="Lengkapi data diri Anda untuk bergabung ke XyNest"
-    >
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.form}>
-        <Text style={styles.label}>EMAIL</Text>
-        <TextInput style={styles.input} placeholder="contoh@domain.com" placeholderTextColor="#8E8E93" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+    <AuthLayout title="Buat Akun Baru" subtitle="Bergabunglah dengan XyNest sekarang juga.">
+      <ScrollView contentContainerStyle={styles.form} showsVerticalScrollIndicator={false}>
+        <Text style={styles.label}>NAMA LENGKAP</Text>
+        <TextInput style={styles.input} placeholder="John Doe" value={fullName} onChangeText={setFullName} />
 
         <Text style={styles.label}>USERNAME</Text>
-        <TextInput style={styles.input} placeholder="username_kamu" placeholderTextColor="#8E8E93" value={username} onChangeText={setUsername} autoCapitalize="none" />
+        <TextInput style={styles.input} placeholder="johndoe123" value={username} onChangeText={setUsername} autoCapitalize="none" />
 
-        <Text style={styles.label}>NAMA LENGKAP</Text>
-        <TextInput style={styles.input} placeholder="Nama Lengkap Anda" placeholderTextColor="#8E8E93" value={fullName} onChangeText={setFullName} />
+        <Text style={styles.label}>EMAIL</Text>
+        <TextInput style={styles.input} placeholder="email@contoh.com" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
 
-        <Text style={styles.label}>NOMOR HANDPHONE</Text>
-        <TextInput style={styles.input} placeholder="08xxxxxxxxxx" placeholderTextColor="#8E8E93" value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" />
+        <Text style={styles.label}>NOMOR HANDPHONE (Opsional)</Text>
+        <TextInput style={styles.input} placeholder="+62..." value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" />
 
         <Text style={styles.label}>JENIS KELAMIN</Text>
         <View style={styles.rowGender}>
-          <TouchableOpacity style={[styles.genderBox, gender === 'pria' && styles.genderSel]} onPress={() => setGender('pria')}>
-            <Text style={[styles.genderTxt, gender === 'pria' && styles.genderTxtSel]}>PRIA</Text>
+          <TouchableOpacity style={[styles.genderBox, gender === 'Pria' && styles.genderSel]} onPress={() => setGender('Pria')}>
+            <Text style={[styles.genderTxt, gender === 'Pria' && styles.genderTxtSel]}>Laki-Laki</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.genderBox, gender === 'wanita' && styles.genderSel]} onPress={() => setGender('wanita')}>
-            <Text style={[styles.genderTxt, gender === 'wanita' && styles.genderTxtSel]}>WANITA</Text>
+          <TouchableOpacity style={[styles.genderBox, gender === 'Wanita' && styles.genderSel]} onPress={() => setGender('Wanita')}>
+            <Text style={[styles.genderTxt, gender === 'Wanita' && styles.genderTxtSel]}>Perempuan</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={styles.label}>TANGGAL LAHIR (DD/MM/YYYY)</Text>
         <View style={styles.rowDate}>
-          <TextInput style={[styles.input, { flex: 1 }]} placeholder="DD/MM/YYYY" placeholderTextColor="#8E8E93" value={birthDate} onChangeText={handleTypeDate} keyboardType="number-pad" maxLength={10} />
-          <TouchableOpacity style={styles.calBtn} onPress={() => setShowCalendar(true)}>
-            <Text style={{ fontSize: 16 }}>📅</Text>
-          </TouchableOpacity>
+          <TextInput style={[styles.input, { flex: 1 }]} placeholder="01/12/2000" value={birthDate} onChangeText={handleTypeDate} keyboardType="numeric" maxLength={10} />
+          <TouchableOpacity style={styles.calBtn} onPress={() => setShowCalendar(true)}><Text>📅</Text></TouchableOpacity>
         </View>
 
         {showCalendar && (
-          <DateTimePicker value={new Date(2005, 0, 1)} mode="date" display="default" onChange={handleCalendarPick} maximumDate={new Date()} />
+          <DateTimePicker value={new Date()} mode="date" display="default" onChange={handleCalendarPick} maximumDate={new Date()} />
         )}
 
         <TouchableOpacity style={styles.button} onPress={handleRegisterSubmit} disabled={loading}>
@@ -128,10 +130,10 @@ const styles = StyleSheet.create({
   genderTxt: { fontSize: 13, color: '#636366' },
   genderTxtSel: { color: '#007AFF', fontWeight: '600' },
   rowDate: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  calBtn: { backgroundColor: '#E5E5EA', padding: 10, borderRadius: 10 },
-  button: { backgroundColor: '#007AFF', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 12 },
+  calBtn: { backgroundColor: '#E5E5EA', padding: 10, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  button: { backgroundColor: '#007AFF', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 12, marginBottom: 20 },
   btnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
-  switchScreen: { alignItems: 'center', marginTop: 16, marginBottom: 10 },
+  switchScreen: { paddingVertical: 16, alignItems: 'center', backgroundColor: '#FFF' },
   switchText: { fontSize: 14, color: '#636366' },
   link: { color: '#007AFF', fontWeight: '600' }
 });

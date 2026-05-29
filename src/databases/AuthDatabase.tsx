@@ -35,56 +35,35 @@ class AuthDatabase {
           session_token TEXT
         );
       `);
-      console.log("💾 [AuthDatabase] SQLite Berhasil Diinisialisasi.");
     } catch (error) {
-      console.error("❌ [AuthDatabase] Gagal memuat SQLite:", error);
+      console.error("Gagal memuat SQLite:", error);
     }
-  }
-
-  private async getDbConnection(): Promise<SQLite.SQLiteDatabase> {
-    if (!this.db) {
-      this.db = await SQLite.openDatabaseAsync('xynest_auth.db');
-    }
-    return this.db;
   }
 
   public async saveSession(user: UserSession, token: string): Promise<void> {
-    const db = await this.getDbConnection();
-    await db.runAsync('DELETE FROM session');
-    
-    const userDataStr = JSON.stringify(user);
-    await db.runAsync(
+    if (!this.db) return;
+    await this.db.runAsync('DELETE FROM session'); // Hapus sesi lama
+    await this.db.runAsync(
       'INSERT INTO session (user_data, session_token) VALUES (?, ?)',
-      [userDataStr, token]
+      [JSON.stringify(user), token]
     );
-    console.log("💾 [AuthDatabase] Sesi disimpan ke SQLite.");
   }
 
   public async getSession(): Promise<UserSession | null> {
-    const db = await this.getDbConnection();
-    const row = await db.getFirstAsync<{ user_data: string }>('SELECT user_data FROM session LIMIT 1');
-    
-    if (row && row.user_data) {
-      return JSON.parse(row.user_data) as UserSession;
-    }
-    return null;
+    if (!this.db) return null;
+    const result: any = await this.db.getFirstAsync('SELECT user_data FROM session LIMIT 1');
+    return result ? JSON.parse(result.user_data) : null;
   }
 
   public async getToken(): Promise<string | null> {
-    const db = await this.getDbConnection();
-    const row = await db.getFirstAsync<{ session_token: string }>('SELECT session_token FROM session LIMIT 1');
-    return row ? row.session_token : null;
-  }
-
-  public async isAuthenticated(): Promise<boolean> {
-    const token = await this.getToken();
-    return token !== null;
+    if (!this.db) return null;
+    const result: any = await this.db.getFirstAsync('SELECT session_token FROM session LIMIT 1');
+    return result ? result.session_token : null;
   }
 
   public async clearSession(): Promise<void> {
-    const db = await this.getDbConnection();
-    await db.runAsync('DELETE FROM session');
-    console.log("❌ [AuthDatabase] Sesi di SQLite berhasil dikosongkan.");
+    if (!this.db) return;
+    await this.db.runAsync('DELETE FROM session');
   }
 }
 

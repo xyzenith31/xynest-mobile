@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { AuthService } from '@/services/AuthService';
+import { LoginService } from '@/services/LoginService';
+import { VerifyService } from '@/services/VerifyService';
 import AuthLayout from '@/app/layouts/AuthLayout';
 
 export default function VerificationScreenApp() {
@@ -11,6 +12,7 @@ export default function VerificationScreenApp() {
   const [loading, setLoading] = useState(false);
   const identifier = params.identifier || '';
   const authType = params.type || 'login';
+
   const handleOtpChange = (text: string) => {
     const cleanText = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     setOtpCode(cleanText);
@@ -25,59 +27,66 @@ export default function VerificationScreenApp() {
     try {
       let res;
       if (authType === 'register') {
-        res = await AuthService.verifyRegister(identifier, otpCode.trim());
+        res = await VerifyService.verifyRegister(identifier, otpCode.trim());
       } else {
-        res = await AuthService.verifyLogin(identifier, otpCode.trim());
+        res = await LoginService.verifyLogin(identifier, otpCode.trim());
       }
 
       if (res && res.success) {
-        Alert.alert('Sukses', 'Verifikasi berhasil! Masuk ke aplikasi...');
-        router.replace('/screens/other/HomeScreenApp');
+        Alert.alert('Sukses', 'Verifikasi berhasil! Masuk ke aplikasi...', [
+          {
+            text: 'OK',
+            onPress: () => {
+              setLoading(false);
+              router.replace('/screens/other/HomeScreenApp');
+            }
+          }
+        ]);
       } else {
         Alert.alert('Gagal', res?.error || 'Kode verifikasi salah atau kedaluwarsa.');
+        setLoading(false);
       }
     } catch (err) {
       Alert.alert('Error', 'Gagal terhubung ke API server verifikasi.');
-    } finally {
       setLoading(false);
     }
   };
 
   const handleResendOtp = async () => {
-    if (!identifier) return;
     setLoading(true);
     try {
-      const res = await AuthService.resendOTP(identifier);
+      const res = await VerifyService.resendOTP(identifier);
+
       if (res && res.success) {
-        Alert.alert('Sukses', res.message || 'Kode verifikasi baru telah dikirim!');
+        Alert.alert('Sukses', res.message || 'Kode verifikasi baru telah dikirim ulang!');
       } else {
-        Alert.alert('Gagal', res?.error || 'Gagal mengirim ulang kode.');
+        Alert.alert('Gagal', res?.error || 'Gagal mengirim ulang kode OTP.');
       }
+      setLoading(false);
     } catch (err) {
-      Alert.alert('Error', 'Terjadi kesalahan jaringan saat mengirim ulang OTP.');
-    } finally {
+      Alert.alert('Error', 'Gagal terhubung ke server saat kirim ulang OTP.');
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout 
-      title="Verifikasi OTP" 
-      subtitle={`Masukkan kode verifikasi alfanumerik yang dikirim ke:\n${identifier}`}
+    <AuthLayout
+      title="Verifikasi OTP"
+      subtitle={`Masukkan kode yang telah dikirimkan ke ${identifier}`}
     >
       <View style={styles.form}>
-        <TextInput 
-          style={styles.input} 
-          placeholder="CONTOH: XY123A" 
-          placeholderTextColor="#8E8E93" 
-          value={otpCode} 
-          onChangeText={handleOtpChange} 
+        <TextInput
+          style={styles.input}
+          placeholder="XXXXXX"
+          placeholderTextColor="#C7C7CC"
+          value={otpCode}
+          onChangeText={handleOtpChange}
           autoCapitalize="characters"
           autoCorrect={false}
           maxLength={10}
           textAlign="center"
         />
-        
+
         <TouchableOpacity style={styles.button} onPress={handleVerifySubmit} disabled={loading}>
           {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Verifikasi & Masuk</Text>}
         </TouchableOpacity>
@@ -99,8 +108,8 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#F2F2F7', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 10, fontSize: 18, color: '#1C1C1E', fontWeight: 'bold', letterSpacing: 2 },
   button: { backgroundColor: '#007AFF', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 4 },
   btnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
-  resendBtn: { alignItems: 'center', marginTop: 10 },
+  resendBtn: { alignItems: 'center', marginTop: 24 },
   resendTxt: { fontSize: 14, color: '#636366' },
-  backBtn: { alignItems: 'center', marginTop: 10 },
-  link: { color: '#007AFF', fontWeight: '600' }
+  link: { color: '#007AFF', fontWeight: '600' },
+  backBtn: { alignItems: 'center', marginTop: 16 }
 });

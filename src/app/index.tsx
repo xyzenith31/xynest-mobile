@@ -1,14 +1,14 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AuthService } from '@/services/AuthService';
+import { DeviceService } from '@/services/DeviceService';
 
 export default function RootNavigationIndex() {
   const router = useRouter();
 
   useEffect(() => {
     const checkRedirect = async () => {
-      const isLoggedIn = await AuthService.checkSessionValidity();
+      const isLoggedIn = await DeviceService.checkSessionValidity();
       if (isLoggedIn) {
         router.replace('/screens/other/HomeScreenApp');
       } else {

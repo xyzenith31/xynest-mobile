@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { authDb, UserSession } from '@/databases/AuthDatabase';
-import { AuthService } from '@/services/AuthService';
+import { DeviceService } from '@/services/DeviceService';
+import { UserService } from '@/services/UserService';
 
 export default function HomeScreenApp() {
   const router = useRouter();
@@ -12,9 +13,14 @@ export default function HomeScreenApp() {
 
   useEffect(() => {
     const fetchSession = async () => {
-      const isValid = await AuthService.checkSessionValidity();
-      if (isValid) { setUser(await authDb.getSession()); } 
-      else { router.replace('/screens/auth/LoginScreenApp'); }
+      const isValid = await DeviceService.checkSessionValidity();
+      
+      if (isValid) { 
+        setUser(await authDb.getSession()); 
+      } else { 
+        await authDb.clearSession(); 
+        router.replace('/screens/auth/LoginScreenApp'); 
+      }
       setLoading(false);
     };
     fetchSession();
@@ -22,11 +28,54 @@ export default function HomeScreenApp() {
 
   const handleLogout = async () => {
     setLoading(true);
-    await AuthService.logout();
+    
+    await UserService.logout(); 
+    await authDb.clearSession(); 
+    
+    setLoading(false);
     router.replace('/screens/auth/LoginScreenApp');
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#007AFF" /></View>;
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Konfirmasi Hapus Akun",
+      "Apakah Anda yakin ingin menghapus akun secara permanen? Seluruh data dan sesi akan dihapus dari sistem.",
+      [
+        { text: "Batal", style: "cancel" },
+        { 
+          text: "Hapus Permanen", 
+          style: "destructive", 
+          onPress: async () => {
+            setLoading(true);
+            
+            const res = await UserService.deleteAccount(); 
+            await authDb.clearSession(); 
+            setLoading(false);
+
+            setTimeout(() => {
+              if (res && res.success) {
+                Alert.alert("Sukses", "Akun berhasil dihapus permanen.", [
+                  { text: "OK", onPress: () => router.replace('/screens/auth/LoginScreenApp') }
+                ]);
+              } else {
+                Alert.alert("Gagal", res?.error || "Gagal menghapus akun.");
+                router.replace('/screens/auth/LoginScreenApp');
+              }
+            }, 100);
+          } 
+        }
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={{ marginTop: 10, color: '#8E8E93' }}>Memproses permintaan...</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -35,12 +84,21 @@ export default function HomeScreenApp() {
         <Text style={styles.welcome}>Sesi Aktif Terautentikasi</Text>
         <Text style={styles.name}>{user?.full_name}</Text>
         <Text style={styles.username}>@{user?.username}</Text>
+        
         <View style={styles.divider} />
+        
         <View style={styles.row}><Text style={styles.lbl}>Email</Text><Text style={styles.val}>{user?.email}</Text></View>
-        <View style={styles.row}><Text style={styles.lbl}>No HP</Text><Text style={styles.val}>{user?.phone_number}</Text></View>
+        <View style={styles.row}><Text style={styles.lbl}>Telepon</Text><Text style={styles.val}>{user?.phone_number || '-'}</Text></View>
         <View style={styles.row}><Text style={styles.lbl}>Gender</Text><Text style={styles.val}>{user?.gender}</Text></View>
         <View style={styles.row}><Text style={styles.lbl}>Lahir</Text><Text style={styles.val}>{user?.birth_date}</Text></View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}><Text style={styles.logoutTxt}>Keluar Sesi (Logout)</Text></TouchableOpacity>
+        
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Text style={styles.logoutTxt}>Keluar Sesi (Logout)</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteAccount}>
+          <Text style={styles.deleteTxt}>Hapus Akun Permanen</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -54,9 +112,11 @@ const styles = StyleSheet.create({
   name: { fontSize: 24, fontWeight: 'bold', color: '#1C1C1E', textAlign: 'center', marginTop: 6 },
   username: { fontSize: 14, color: '#8E8E93', textAlign: 'center', marginBottom: 12 },
   divider: { height: 1, backgroundColor: '#E5E5EA', marginVertical: 10 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  lbl: { fontSize: 14, color: '#636366' },
-  val: { fontSize: 14, color: '#1C1C1E', fontWeight: '600' },
-  logoutBtn: { backgroundColor: '#FF3B30', marginTop: 20, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  logoutTxt: { color: '#FFF', fontSize: 15, fontWeight: '600' }
+  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
+  lbl: { fontSize: 13, color: '#8E8E93' },
+  val: { fontSize: 13, fontWeight: '500', color: '#1C1C1E' },
+  logoutBtn: { backgroundColor: '#007AFF', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 24 },
+  logoutTxt: { color: '#FFF', fontSize: 14, fontWeight: 'bold' },
+  deleteBtn: { backgroundColor: 'transparent', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 8, borderWidth: 1, borderColor: '#FF3B30' },
+  deleteTxt: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold' }
 });
