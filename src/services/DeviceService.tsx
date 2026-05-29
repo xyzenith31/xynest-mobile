@@ -91,4 +91,33 @@ export class DeviceService {
       return { success: false, error: 'Kesalahan jaringan saat menghapus perangkat.' };
     }
   }
+
+  static async authorizeQRLogin(qrToken: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    const token = await authDb.getToken();
+    if (!token) return { success: false, error: 'Tidak ada sesi lokal.' };
+
+    try {
+      const response = await fetch(`${API_URL}/qr/authorize`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          qr_token: qrToken
+        })
+      });
+      
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        return { success: true, message: result.message };
+      }
+      
+      return { success: false, error: result.error || 'Gagal mengotorisasi perangkat.' };
+    } catch (err) {
+      console.error("❌ Gagal authorizeQRLogin:", err);
+      return { success: false, error: 'Kesalahan jaringan saat mengotorisasi QR.' };
+    }
+  }
 }

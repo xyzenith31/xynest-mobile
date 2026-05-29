@@ -73,18 +73,27 @@ export default function DeviceManagerScreenApp() {
 
   const handleQRScanned = (data: string) => {
     setIsScannerVisible(false);
+    
     Alert.alert(
-      "QR Code Ditemukan", 
-      `Memproses otorisasi untuk:\n${data}`,
+      "Otorisasi Login Web/Desktop", 
+      `Apakah Anda yakin ingin mengizinkan akses untuk sesi ini?`,
       [
+        { text: "Batal", style: "cancel" },
         {
-          text: "Otorisasi Perangkat",
-          onPress: () => {
-            Alert.alert("Sukses", "Sesi berhasil diberikan ke perangkat baru.");
-            fetchDevices();
+          text: "Otorisasi",
+          onPress: async () => {
+            setLoading(true);
+            const res = await DeviceService.authorizeQRLogin(data);
+            
+            if (res.success) {
+              Alert.alert("Sukses", res.message || "Sesi berhasil diberikan ke perangkat baru.");
+              fetchDevices();
+            } else {
+              Alert.alert("Gagal", res.error || "Gagal mengotorisasi perangkat.");
+              setLoading(false);
+            }
           }
-        },
-        { text: "Batal", style: "cancel" }
+        }
       ]
     );
   };
