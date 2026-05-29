@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, StatusBar, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authDb, UserSession } from '@/databases/AuthDatabase';
 import { DeviceService } from '@/services/DeviceService';
 import { UserService } from '@/services/UserService';
+import AppLayout from '../../layouts/AppLayout';
 
 export default function HomeScreenApp() {
   const router = useRouter();
@@ -25,16 +25,6 @@ export default function HomeScreenApp() {
     };
     fetchSession();
   }, []);
-
-  const handleLogout = async () => {
-    setLoading(true);
-    
-    await UserService.logout(); 
-    await authDb.clearSession(); 
-    
-    setLoading(false);
-    router.replace('/screens/auth/LoginScreenApp');
-  };
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -78,8 +68,7 @@ export default function HomeScreenApp() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <AppLayout title="Beranda">
       <View style={styles.card}>
         <Text style={styles.welcome}>Sesi Aktif Terautentikasi</Text>
         <Text style={styles.name}>{user?.full_name}</Text>
@@ -92,20 +81,19 @@ export default function HomeScreenApp() {
         <View style={styles.row}><Text style={styles.lbl}>Gender</Text><Text style={styles.val}>{user?.gender}</Text></View>
         <View style={styles.row}><Text style={styles.lbl}>Lahir</Text><Text style={styles.val}>{user?.birth_date}</Text></View>
         
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutTxt}>Keluar Sesi (Logout)</Text>
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/screens/settings/SettingScreenApp')}>
+          <Text style={styles.settingsTxt}>Buka Pengaturan</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteAccount}>
           <Text style={styles.deleteTxt}>Hapus Akun Permanen</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </AppLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F2F2F7', padding: 24, justifyContent: 'center' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F2F2F7' },
   card: { backgroundColor: '#FFF', padding: 24, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 4 },
   welcome: { fontSize: 12, color: '#007AFF', fontWeight: '700', textTransform: 'uppercase', textAlign: 'center', letterSpacing: 1 },
@@ -115,8 +103,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
   lbl: { fontSize: 13, color: '#8E8E93' },
   val: { fontSize: 13, fontWeight: '500', color: '#1C1C1E' },
-  logoutBtn: { backgroundColor: '#007AFF', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 24 },
-  logoutTxt: { color: '#FFF', fontSize: 14, fontWeight: 'bold' },
+  settingsBtn: { backgroundColor: '#007AFF', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 24 },
+  settingsTxt: { color: '#FFF', fontSize: 14, fontWeight: 'bold' },
   deleteBtn: { backgroundColor: 'transparent', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 8, borderWidth: 1, borderColor: '#FF3B30' },
   deleteTxt: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold' }
 });
