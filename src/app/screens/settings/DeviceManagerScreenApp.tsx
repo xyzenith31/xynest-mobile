@@ -4,11 +4,13 @@ import { useRouter } from 'expo-router';
 import { DeviceService, DeviceSession } from '@/services/DeviceService';
 import { authDb } from '@/databases/AuthDatabase';
 import AppLayout from '../../layouts/AppLayout';
+import QRCodeScanner from '@/utils/tools/QRCodeScanner';
 
 export default function DeviceManagerScreenApp() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [devices, setDevices] = useState<DeviceSession[]>([]);
+  const [isScannerVisible, setIsScannerVisible] = useState(false);
 
   useEffect(() => {
     fetchDevices();
@@ -69,6 +71,24 @@ export default function DeviceManagerScreenApp() {
     );
   };
 
+  const handleQRScanned = (data: string) => {
+    setIsScannerVisible(false);
+    Alert.alert(
+      "QR Code Ditemukan", 
+      `Memproses otorisasi untuk:\n${data}`,
+      [
+        {
+          text: "Otorisasi Perangkat",
+          onPress: () => {
+            Alert.alert("Sukses", "Sesi berhasil diberikan ke perangkat baru.");
+            fetchDevices();
+          }
+        },
+        { text: "Batal", style: "cancel" }
+      ]
+    );
+  };
+
   const renderDeviceItem = ({ item }: { item: DeviceSession }) => (
     <View style={styles.deviceCard}>
       <View style={styles.deviceInfo}>
@@ -94,6 +114,15 @@ export default function DeviceManagerScreenApp() {
 
   return (
     <AppLayout title="Perangkat Aktif" scrollable={false}>
+      <View style={styles.actionContainer}>
+        <TouchableOpacity 
+          style={styles.scanBtn} 
+          onPress={() => setIsScannerVisible(true)}
+        >
+          <Text style={styles.scanBtnText}>📷 Pindai QR untuk Login Desktop</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading && devices.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#007AFF" />
@@ -116,6 +145,12 @@ export default function DeviceManagerScreenApp() {
           }
         />
       )}
+
+      <QRCodeScanner 
+        visible={isScannerVisible}
+        onClose={() => setIsScannerVisible(false)}
+        onScan={handleQRScanned}
+      />
     </AppLayout>
   );
 }
@@ -123,7 +158,10 @@ export default function DeviceManagerScreenApp() {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, color: '#8E8E93', fontSize: 14 },
-  listContainer: { paddingBottom: 24 },
+  actionContainer: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  scanBtn: { backgroundColor: '#007AFF', padding: 14, borderRadius: 12, alignItems: 'center', shadowColor: '#007AFF', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
+  scanBtnText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
+  listContainer: { paddingBottom: 24, paddingHorizontal: 16, paddingTop: 8 },
   deviceCard: { backgroundColor: '#FFF', padding: 16, borderRadius: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   deviceInfo: { flex: 1, paddingRight: 12 },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
