@@ -38,7 +38,7 @@ export default function LoginScreenApp() {
         <InputApp
           iconName="person"
           iconColor="#007AFF"
-          placeholder="Email, @username, atau nomor..."
+          placeholder="Email, Username Atau Nomor Ponsel Anda"
           value={identifier}
           onChangeText={setIdentifier}
           autoCapitalize="none"

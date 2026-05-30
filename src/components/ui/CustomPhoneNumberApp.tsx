@@ -11,12 +11,12 @@ interface Props {
 }
 
 const COUNTRY_CODES: SelectOption[] = [
-  { label: '🇮🇩 +62', value: '62', iconName: 'location', iconColor: '#FF2D55' },
-  { label: '🇻🇳 +84', value: '84', iconName: 'location', iconColor: '#FF9500' },
-  { label: '🇹🇭 +66', value: '66', iconName: 'location', iconColor: '#5856D6' },
-  { label: '🇸🇬 +65', value: '65', iconName: 'location', iconColor: '#34C759' },
-  { label: '🇨🇳 +86', value: '86', iconName: 'location', iconColor: '#FF3B30' },
-  { label: '🇯🇵 +81', value: '81', iconName: 'location', iconColor: '#007AFF' },
+  { label: '🇮🇩 +62', value: '62', iconName: 'flag', iconColor: '#FF2D55' },
+  { label: '🇺🇸 +1', value: '1', iconName: 'flag', iconColor: '#007AFF' },
+  { label: '🇨🇳 +86', value: '86', iconName: 'flag', iconColor: '#FF3B30' },
+  { label: '🇯🇵 +81', value: '81', iconName: 'flag', iconColor: '#AF52DE' },
+  { label: '🇹🇭 +66', value: '66', iconName: 'flag', iconColor: '#5856D6' },
+  { label: '🇻🇳 +84', value: '84', iconName: 'flag', iconColor: '#FF9500' },
 ];
 
 const CustomPhoneNumberApp = ({ countryCode, setCountryCode, phoneNumber, setPhoneNumber }: Props) => {
@@ -61,7 +61,7 @@ const CustomPhoneNumberApp = ({ countryCode, setCountryCode, phoneNumber, setPho
 export default memo(CustomPhoneNumberApp);
 
 const styles = StyleSheet.create({
-  container: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F7', borderRadius: 25, paddingHorizontal: 18, paddingVertical: 12,borderWidth: 1.5, borderColor: 'transparent', marginBottom: 12 },
+  container: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F7', borderRadius: 25, paddingHorizontal: 18, paddingVertical: 12,   borderWidth: 1.5, borderColor: 'transparent', marginBottom: 12 },
   focused: { borderColor: '#007AFF', backgroundColor: '#FFF' },
   icon: { marginRight: 12 },
   divider: { width: 1, height: 20, backgroundColor: '#C7C7CC', marginHorizontal: 16 },

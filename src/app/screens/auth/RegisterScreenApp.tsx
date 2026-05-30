@@ -18,6 +18,7 @@ export default function RegisterScreenApp() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
@@ -101,7 +102,7 @@ export default function RegisterScreenApp() {
     <AuthLayout title="Buat Akun Baru" subtitle="Bergabunglah dengan Xynest sekarang juga.">
       <View style={styles.form}>
         
-        <InputApp iconName="mail" iconColor="#FF2D55" placeholder="Email Aktif" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+        <InputApp iconName="mail" iconColor="#FF2D55" placeholder="Email Anda" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
         <InputApp iconName="at" iconColor="#AF52DE" prefix="@" placeholder="Username Anda" value={username} onChangeText={setUsername} autoCapitalize="none" />
         <InputApp iconName="person" iconColor="#007AFF" placeholder="Nama Lengkap Anda" value={fullName} onChangeText={setFullName} />
 

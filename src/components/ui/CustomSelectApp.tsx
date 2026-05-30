@@ -26,6 +26,7 @@ const CustomSelectApp = ({
   iconName = 'list', iconColor = '#FF9500', compact = false 
 }: CustomSelectAppProps) => {
   const [visible, setVisible] = useState(false);
+  
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
   triggerCompact: { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0, marginBottom: 0 },
   triggerIcon: { marginRight: 10 },
   triggerText: { flex: 1, fontSize: 15, color: '#1C1C1E' },
-  triggerTextCompact: { flex: 0, marginRight: 4, fontSize: 15, fontWeight: '500' },
+  triggerTextCompact: { flex: 0, marginRight: 8, fontSize: 15, fontWeight: '500' },
   placeholderText: { color: '#8E8E93' },
   modalContainer: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' },
