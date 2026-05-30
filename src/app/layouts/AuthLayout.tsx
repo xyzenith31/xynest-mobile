@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Modal from 'react-native-modal';
 
+import ContextMenuApp from '@/components/ux/ContextMenuApp';
+
 LogBox.ignoreLogs([
   'InteractionManager has been deprecated',
   'fetch failed',
@@ -16,9 +18,9 @@ interface AuthLayoutProps {
   children: React.ReactNode;
   title: string;
   subtitle: string;
-  slideDirection?: 'left' | 'right' | 'none'; // <-- Nentuin arah masuk layar
-  isExiting?: boolean;                        // <-- Trigger animasi layar dibuang
-  onExitComplete?: () => void;                // <-- Eksekusi router back/replace
+  slideDirection?: 'left' | 'right' | 'none'; 
+  isExiting?: boolean;                        
+  onExitComplete?: () => void;                
   isModalVisible?: boolean;
   onCloseModal?: () => void;
   modalContent?: React.ReactNode;
@@ -116,6 +118,8 @@ export default function AuthLayout({
         ]} 
         {...panResponder.panHandlers}
       >
+        <ContextMenuApp />
+
         <ScrollView 
           contentContainerStyle={styles.scroll} 
           showsVerticalScrollIndicator={false}
@@ -138,7 +142,15 @@ export default function AuthLayout({
         </View>
       </Animated.View>
 
-      <Modal isVisible={isModalVisible} onBackdropPress={onCloseModal} onBackButtonPress={onCloseModal} animationIn="fadeIn" animationOut="fadeOut" useNativeDriver hideModalContentWhileAnimating>
+      <Modal 
+        isVisible={isModalVisible} 
+        onBackdropPress={onCloseModal} 
+        onBackButtonPress={onCloseModal} 
+        animationIn="fadeIn" 
+        animationOut="fadeOut" 
+        useNativeDriver 
+        hideModalContentWhileAnimating
+      >
         {modalContent}
       </Modal>
     </View>
@@ -149,7 +161,7 @@ const styles = StyleSheet.create({
   rootWrapper: { flex: 1, backgroundColor: 'transparent' },
   cardContainer: { flex: 1, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 8 },
   scroll: { paddingHorizontal: 24, paddingVertical: 16, justifyContent: 'center', flexGrow: 1 },
-  logoContainer: { alignItems: 'center', marginBottom: 24 },
+  logoContainer: { alignItems: 'center', marginBottom: 24, marginTop: 10 },
   logo: { width: 80, height: 80 },
   header: { marginBottom: 24 },
   title: { fontSize: 26, fontWeight: '800', color: '#1C1C1E', textAlign: 'center', marginBottom: 8 },

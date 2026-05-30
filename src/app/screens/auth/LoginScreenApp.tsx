@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { LoginService } from '@/services/LoginService';
 import AuthLayout from '@/app/layouts/AuthLayout';
 import InputApp from '@/components/ui/InputApp';
-import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractive';
+import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractiveApp';
 
 export default function LoginScreenApp() {
   const router = useRouter();

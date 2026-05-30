@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LoginService } from '@/services/LoginService';
 import { VerifyService } from '@/services/VerifyService';
 import AuthLayout from '@/app/layouts/AuthLayout';
-import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractive';
+import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractiveApp';
 
 export default function VerificationScreenApp() {
   const router = useRouter();

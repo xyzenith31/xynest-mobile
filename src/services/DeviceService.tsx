@@ -21,15 +21,10 @@ export class DeviceService {
     try {
       const response = await fetch(`${API_URL}/devices`, {
         method: 'GET',
-        headers: { 
-          'Authorization': `Bearer ${token}` 
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      if (response.status === 401 || response.status === 403) {
-        return false;
-      }
-      
+      if (response.status === 401 || response.status === 403) return false;
       return response.ok;
     } catch (error) {
       console.log("Status Offline terdeteksi, mempertahankan sesi lokal");
@@ -48,7 +43,6 @@ export class DeviceService {
       });
       
       const result = await response.json();
-      console.log("📥 Data Devices dari Backend:", result); 
       
       if (response.ok) {
         const devices = result.data || result;
@@ -57,11 +51,8 @@ export class DeviceService {
       }
       return { success: false, error: result.message || 'Gagal mengambil data perangkat' };
     } catch (err) {
-      console.error("❌ Gagal getActiveDevices via API, mencoba memuat dari Cache Lokal:", err);
       const cachedDevices = await authDb.getDevicesCache();
-      if (cachedDevices && cachedDevices.length > 0) {
-        return { success: true, data: cachedDevices };
-      }
+      if (cachedDevices && cachedDevices.length > 0) return { success: true, data: cachedDevices };
       return { success: false, error: 'Kesalahan jaringan saat mengambil perangkat.' };
     }
   }
@@ -71,37 +62,20 @@ export class DeviceService {
     if (!token) return { success: false, error: 'Tidak ada sesi lokal.' };
     
     try {
-      console.log(`🚀 Mencoba DELETE perangkat dengan ID: ${deviceId}`);
-      
       const response = await fetch(`${API_URL}/devices/${deviceId}`, {
         method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       
-      if (response.status === 204) {
-        console.log("✅ Berhasil dihapus (204 No Content)");
-        return { success: true };
-      }
+      if (response.status === 204) return { success: true };
 
       let result = {};
-      try {
-        result = await response.json();
-      } catch (e) {
-        console.log("Info: Response body tidak berupa JSON atau kosong.");
-      }
-      
-      console.log("📥 Response DELETE Device:", result);
+      try { result = await response.json(); } catch (e) {}
 
-      if (response.ok) {
-        return { success: true };
-      }
+      if (response.ok) return { success: true };
       
-      return { success: false, error: (result as any).message || 'Gagal menghapus perangkat dari server.' };
+      return { success: false, error: (result as any).message || 'Gagal menghapus perangkat.' };
     } catch (err) {
-      console.error("❌ Gagal removeDevice:", err);
       return { success: false, error: 'Kesalahan jaringan saat menghapus perangkat.' };
     }
   }
@@ -117,9 +91,7 @@ export class DeviceService {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          qr_token: qrToken
-        })
+        body: JSON.stringify({ qr_token: qrToken })
       });
       
       const result = await response.json();

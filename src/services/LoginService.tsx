@@ -31,4 +31,42 @@ export class LoginService {
     }
     return result;
   }
+
+  static async generateQRToken() {
+    try {
+      const response = await fetch(`${API_URL}/qr/generate`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return await response.json();
+    } catch (error) {
+      console.error("Gagal generate QR Token:", error);
+      return { success: false, error: 'Koneksi ke server gagal' };
+    }
+  }
+
+  static async checkQRStatus(qrToken: string) {
+    try {
+      const response = await fetch(`${API_URL}/qr/status/${qrToken}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+
+      if (response.status === 400 || data.error === 'QR Token sudah kedaluwarsa.') {
+        return { success: false, isExpired: true, error: data.error };
+      }
+
+      if (response.ok && data.success && data.status === 'AUTHORIZED') {
+        if (data.session_token && data.user) {
+          await authDb.saveSession(data.user, data.session_token);
+        }
+      }
+
+      return data;
+    } catch (error) {
+      console.log("Polling check error (mungkin network):", error);
+      return { success: false, error: 'Koneksi ke server terputus' };
+    }
+  }
 }

@@ -28,7 +28,7 @@ export default function NotificationInteractive({
   buttons,
   onDismiss,
 }: NotificationInteractiveProps) {
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
   const [isRendered, setIsRendered] = useState(visible);
@@ -39,14 +39,14 @@ export default function NotificationInteractive({
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
-          easing: Easing.out(Easing.exp),
+          easing: Easing.out(Easing.ease),
         }),
         Animated.spring(scaleAnim, {
           toValue: 1,
-          friction: 9,
-          tension: 45,
+          friction: 8,
+          tension: 60,
           useNativeDriver: true,
         }),
       ]).start();
@@ -59,9 +59,10 @@ export default function NotificationInteractive({
           easing: Easing.in(Easing.ease),
         }),
         Animated.timing(scaleAnim, {
-          toValue: 0.85,
+          toValue: 0.9,
           duration: 200,
           useNativeDriver: true,
+          easing: Easing.in(Easing.ease),
         }),
       ]).start(() => {
         setIsRendered(false);
@@ -97,7 +98,7 @@ export default function NotificationInteractive({
         ]}>
           
           <View style={[styles.iconWrapper, { backgroundColor: iconConfig.bg }]}>
-            <Ionicons name={iconConfig.name as any} size={32} color={iconConfig.color} />
+            <Ionicons name={iconConfig.name as any} size={28} color={iconConfig.color} />
           </View>
           
           <Text style={styles.title}>{title}</Text>
@@ -106,18 +107,23 @@ export default function NotificationInteractive({
           <View style={styles.buttonContainer}>
             {buttons.map((btn, index) => {
               const isCancel = btn.style === 'cancel';
+              const isDanger = btn.style === 'danger';
               return (
                 <TouchableOpacity
                   key={index}
                   style={[
                     styles.buttonCapsule, 
-                    isCancel ? styles.buttonCancel : styles.buttonDefault,
+                    isCancel ? styles.buttonCancel : isDanger ? styles.buttonDanger : styles.buttonDefault,
                     buttons.length > 1 && { flex: 1, marginHorizontal: 6 }
                   ]}
                   onPress={btn.onPress}
-                  activeOpacity={0.7}
+                  activeOpacity={0.75}
                 >
-                  <Text style={[styles.buttonText, isCancel && styles.buttonTextCancel]}>
+                  <Text style={[
+                    styles.buttonText, 
+                    isCancel && styles.buttonTextCancel,
+                    isDanger && styles.buttonTextDanger
+                  ]}>
                     {btn.text}
                   </Text>
                 </TouchableOpacity>
@@ -133,15 +139,17 @@ export default function NotificationInteractive({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', zIndex: 9999, },
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.4)', },
-  dialogContainer: { width: '85%', maxWidth: 360, backgroundColor: '#FFFFFF', borderRadius: 40, paddingHorizontal: 28, paddingTop: 32, paddingBottom: 28, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.1, shadowRadius: 24, elevation: 15, },
-  iconWrapper: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 20, },
-  title: { fontSize: 20, fontWeight: '800', color: '#1C1C1E', marginBottom: 10, textAlign: 'center', letterSpacing: -0.5, },
-  message: { fontSize: 15, color: '#8E8E93', textAlign: 'center', marginBottom: 28, lineHeight: 22, paddingHorizontal: 10, },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.45)', },
+  dialogContainer: { width: '80%', maxWidth: 320, backgroundColor: '#FFFFFF', borderRadius: 28, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 24, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 10, },
+  iconWrapper: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 16, },
+  title: { fontSize: 18, fontWeight: '700', color: '#1C1C1E', marginBottom: 8, textAlign: 'center', letterSpacing: -0.3, },
+  message: { fontSize: 14, color: '#8E8E93', textAlign: 'center', marginBottom: 24, lineHeight: 20, paddingHorizontal: 4, },
   buttonContainer: { flexDirection: 'row', justifyContent: 'center', width: '100%', },
-  buttonCapsule: { paddingVertical: 14, paddingHorizontal: 24, borderRadius: 999, alignItems: 'center', justifyContent: 'center', minWidth: 120, },
-  buttonDefault: { backgroundColor: '#007AFF', shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4, },
-  buttonCancel: { backgroundColor: '#F2F2F7' },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.3, },
-  buttonTextCancel: { color: '#1C1C1E' },
+  buttonCapsule: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 999, alignItems: 'center', justifyContent: 'center', minWidth: 110, },
+  buttonDefault: { backgroundColor: '#007AFF', shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 3, },
+  buttonCancel: { backgroundColor: '#F2F2F7', },
+  buttonDanger: { backgroundColor: '#FFECEB', },
+  buttonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600', },
+  buttonTextCancel: { color: '#3A3A3C', },
+  buttonTextDanger: { color: '#FF3B30', }
 });

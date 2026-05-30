@@ -7,7 +7,7 @@ import AuthLayout from '@/app/layouts/AuthLayout';
 import InputApp from '@/components/ui/InputApp';
 import CustomSelectApp, { SelectOption } from '@/components/ui/CustomSelectApp';
 import CustomPhoneNumberApp from '@/components/ui/CustomPhoneNumberApp';
-import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractive';
+import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractiveApp';
 
 const genderOptions: SelectOption[] = [
   { label: 'Pria', value: 'Pria', iconName: 'male', iconColor: '#007AFF' },
