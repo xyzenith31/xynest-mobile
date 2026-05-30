@@ -20,7 +20,7 @@ export default function LoginScreenApp() {
 
   const handleRequestOtp = useCallback(async () => {
     if (!identifier.trim()) {
-      return showNotification('Form Tidak Lengkap', 'Input wajib diisi, bro!', 'warning', [
+      return showNotification('Form Tidak Lengkap', 'Email, Username, atau Nomor Ponsel wajib diisi, bro!', 'warning', [
         { text: 'Oke', onPress: () => setNotifyVisible(false) }
       ]);
     }
@@ -28,6 +28,7 @@ export default function LoginScreenApp() {
     setLoading(true);
     try {
       const res = await LoginService.requestLogin(identifier.trim());
+      
       if (res.success) {
         setLoading(false);
         showNotification(
@@ -53,7 +54,8 @@ export default function LoginScreenApp() {
       }
     } catch (err: any) {
       setLoading(false);
-      showNotification('Error', 'Gagal terhubung ke API server.', 'error', [
+      const errorMessage = err?.response?.data?.error || 'Gagal terhubung ke API server.';
+      showNotification('Error Server', errorMessage, 'error', [
         { text: 'Oke', onPress: () => setNotifyVisible(false) }
       ]);
     }

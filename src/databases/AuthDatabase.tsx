@@ -10,6 +10,18 @@ export interface UserSession {
   phone_number: string;
 }
 
+export interface DeviceData {
+  id: string | number;
+  device_id?: string | number;
+  device_model: string;
+  platform: string;
+  os_version: string;
+  is_current_device?: boolean;
+  last_active?: string;
+  email?: string;
+  username?: string;
+}
+
 class AuthDatabase {
   private static instance: AuthDatabase;
   private db: SQLite.SQLiteDatabase | null = null;
@@ -39,6 +51,10 @@ class AuthDatabase {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           user_data TEXT,
           session_token TEXT
+        );
+        CREATE TABLE IF NOT EXISTS devices_cache (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          device_data TEXT
         );
       `);
     } catch (error) {
@@ -73,6 +89,24 @@ class AuthDatabase {
   public async clearSession(): Promise<void> {
     if (!this.db) return;
     await this.db.runAsync('DELETE FROM session');
+    await this.db.runAsync('DELETE FROM devices_cache');
+  }
+  
+  public async saveDevicesCache(devices: DeviceData[]): Promise<void> {
+    await this.ensureDbReady();
+    if (!this.db) return;
+    await this.db.runAsync('DELETE FROM devices_cache');
+    await this.db.runAsync(
+      'INSERT INTO devices_cache (device_data) VALUES (?)',
+      [JSON.stringify(devices)]
+    );
+  }
+
+  public async getDevicesCache(): Promise<DeviceData[]> {
+    await this.ensureDbReady();
+    if (!this.db) return [];
+    const result: any = await this.db.getFirstAsync('SELECT device_data FROM devices_cache LIMIT 1');
+    return result ? JSON.parse(result.device_data) : [];
   }
 }
 

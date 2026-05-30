@@ -30,6 +30,9 @@ export default function RegisterScreenApp() {
   const [notifyVisible, setNotifyVisible] = useState(false);
   const [notifyConfig, setNotifyConfig] = useState({title: '', message: '', type: 'info' as NotificationType, buttons: [] as NotificationButton[]});
 
+  const handleGoToLogin = () => setIsExiting(true);
+  const handleExitComplete = () => router.canGoBack() ? router.back() : router.replace('/screens/auth/LoginScreenApp');
+  
   const showNotification = (title: string, message: string, type: NotificationType, buttons: NotificationButton[]) => {
     setNotifyConfig({ title, message, type, buttons });
     setNotifyVisible(true);
@@ -37,15 +40,12 @@ export default function RegisterScreenApp() {
 
   const handleUsernameChange = (text: string) => {
     let cleanText = text.replace(/\s/g, '');
-    
     if (cleanText.length > 0 && !cleanText.startsWith('@')) {
       cleanText = '@' + cleanText;
     }
-    
     if (cleanText === '@') {
       cleanText = '';
     }
-    
     setUsername(cleanText);
   };
 
@@ -108,7 +108,7 @@ export default function RegisterScreenApp() {
         );
       } else {
         setLoading(false);
-        showNotification('Gagal Mendaftar', res.error || 'Email, Username, atau Nomor Ponsel mungkin sudah digunakan.', 'error', [
+        showNotification('Gagal Mendaftar', res.error || 'Terjadi kesalahan saat mendaftar, silakan coba lagi.', 'error', [
           { text: 'Oke', onPress: () => setNotifyVisible(false) }
         ]);
       }
@@ -145,8 +145,7 @@ export default function RegisterScreenApp() {
     );
   };
 
-  const handleGoToLogin = () => setIsExiting(true);
-  const handleExitComplete = () => router.canGoBack() ? router.back() : router.replace('/screens/auth/LoginScreenApp');
+  
 
   return (
     <AuthLayout 

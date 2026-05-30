@@ -9,10 +9,12 @@ export interface DeviceSession {
   os_version: string;
   is_current_device?: boolean;
   last_active?: string;
+  email?: string;
+  username?: string;
 }
 
 export class DeviceService {
-  static async checkSessionValidity(): Promise<boolean> {
+  static async checkSessionValidity(): Promise<boolean | 'offline'> {
     const token = await authDb.getToken();
     if (!token) return false;
     
@@ -23,9 +25,15 @@ export class DeviceService {
           'Authorization': `Bearer ${token}` 
         }
       });
+      
+      if (response.status === 401 || response.status === 403) {
+        return false;
+      }
+      
       return response.ok;
-    } catch {
-      return false;
+    } catch (error) {
+      console.log("Status Offline terdeteksi, mempertahankan sesi lokal");
+      return 'offline';
     }
   }
 
@@ -43,11 +51,17 @@ export class DeviceService {
       console.log("📥 Data Devices dari Backend:", result); 
       
       if (response.ok) {
-        return { success: true, data: result.data || result };
+        const devices = result.data || result;
+        await authDb.saveDevicesCache(devices);
+        return { success: true, data: devices };
       }
       return { success: false, error: result.message || 'Gagal mengambil data perangkat' };
     } catch (err) {
-      console.error("❌ Gagal getActiveDevices:", err);
+      console.error("❌ Gagal getActiveDevices via API, mencoba memuat dari Cache Lokal:", err);
+      const cachedDevices = await authDb.getDevicesCache();
+      if (cachedDevices && cachedDevices.length > 0) {
+        return { success: true, data: cachedDevices };
+      }
       return { success: false, error: 'Kesalahan jaringan saat mengambil perangkat.' };
     }
   }

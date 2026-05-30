@@ -26,8 +26,9 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
       isCheckingRef.current = true;
       try {
-        const isValid = await DeviceService.checkSessionValidity();
-        if (isValid === false && isMounted) {
+        const sessionStatus = await DeviceService.checkSessionValidity();
+        
+        if (sessionStatus === false && isMounted) {
           await authDb.clearSession();
           Alert.alert(
             "Sesi Berakhir", 
@@ -36,7 +37,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
           );
         }
       } catch (err: any) {
-        console.log("Error network/server saat mengecek sesi:", err);
+        console.log("Error network/server saat mengecek sesi (akan dianggap offline):", err);
       } finally {
         if (isMounted) isCheckingRef.current = false;
       }
