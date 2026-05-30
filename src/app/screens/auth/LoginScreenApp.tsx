@@ -13,7 +13,6 @@ export default function LoginScreenApp() {
   const handleRequestOtp = useCallback(async () => {
     if (!identifier.trim()) return Alert.alert('Error', 'Input wajib diisi, bro!');
     setLoading(true);
-
     try {
       const res = await LoginService.requestLogin(identifier.trim());
       if (res.success) {
@@ -33,7 +32,11 @@ export default function LoginScreenApp() {
   }, [identifier, router]);
 
   return (
-    <AuthLayout title="Selamat Datang" subtitle="Masuk ke Xynest dengan Email atau Nomor Handphone Anda">
+    <AuthLayout 
+      slideDirection="left"
+      title="Selamat Datang" 
+      subtitle="Masuk ke Xynest dengan Email atau Nomor Handphone Anda"
+    >
       <View style={styles.form}>
         <InputApp
           iconName="person"
@@ -44,6 +47,7 @@ export default function LoginScreenApp() {
           autoCapitalize="none"
           autoCorrect={false}
         />
+
         <TouchableOpacity style={styles.button} onPress={handleRequestOtp} disabled={loading} activeOpacity={0.8}>
           {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Minta Kode Verifikasi</Text>}
         </TouchableOpacity>

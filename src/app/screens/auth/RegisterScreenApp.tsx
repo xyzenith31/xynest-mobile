@@ -18,7 +18,7 @@ export default function RegisterScreenApp() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  
+  const [isExiting, setIsExiting] = useState(false);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
@@ -38,7 +38,6 @@ export default function RegisterScreenApp() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setShowCalendar(false);
     const selectedDate = date instanceof Date ? date : (event instanceof Date ? event : null);
-    
     if (selectedDate) {
       const dd = String(selectedDate.getDate()).padStart(2, '0');
       const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
@@ -47,47 +46,21 @@ export default function RegisterScreenApp() {
     }
   }, []);
 
-  const handleDismiss = useCallback(() => {
-    setShowCalendar(false);
-  }, []);
-
-  const toggleCalendar = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setShowCalendar(true);
-  }, []);
-
   const handleRegisterSubmit = useCallback(async () => {
-    if (!email || !username || !fullName || !gender || !birthDate) {
-      return Alert.alert('Error', 'Harap isi semua kolom wajib!');
-    }
-    const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
-    if (!datePattern.test(birthDate)) {
-      return Alert.alert('Error', 'Format tanggal lahir tidak valid (DD/MM/YYYY)');
-    }
-
+    if (!email || !username || !fullName || !gender || !birthDate) return Alert.alert('Error', 'Harap isi semua kolom wajib!');
     setLoading(true);
     try {
       const parts = birthDate.split('/');
       const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-      const fullPhoneNumber = phoneNumber ? `+${countryCode}${phoneNumber}` : undefined;
-
       const payload = {
-        email: email.trim(),
-        username: username.trim(),
-        full_name: fullName.trim(),
-        phone_number: fullPhoneNumber,
-        gender,
-        birth_date: isoDate
+        email: email.trim(), username: username.trim(), full_name: fullName.trim(),
+        phone_number: phoneNumber ? `+${countryCode}${phoneNumber}` : undefined,
+        gender, birth_date: isoDate
       };
-
       const res = await RegisterService.register(payload);
-
       if (res.success) {
         setLoading(false);
-        router.push({
-          pathname: '/screens/auth/VerificationScreenApp' as any,
-          params: { type: 'register', identifier: email.trim() }
-        });
+        router.push({ pathname: '/screens/auth/VerificationScreenApp' as any, params: { type: 'register', identifier: email.trim() } });
       } else {
         Alert.alert('Gagal', res.error || 'Gagal melakukan registrasi.');
         setLoading(false);
@@ -98,41 +71,31 @@ export default function RegisterScreenApp() {
     }
   }, [email, username, fullName, gender, birthDate, phoneNumber, countryCode, router]);
 
+  const handleGoToLogin = () => setIsExiting(true);
+  const handleExitComplete = () => router.canGoBack() ? router.back() : router.replace('/screens/auth/LoginScreenApp');
+
   return (
-    <AuthLayout title="Buat Akun Baru" subtitle="Bergabunglah dengan Xynest sekarang juga.">
+    <AuthLayout 
+      slideDirection="right" 
+      isExiting={isExiting} 
+      onExitComplete={handleExitComplete}
+      title="Buat Akun Baru" 
+      subtitle="Bergabunglah dengan Xynest sekarang juga."
+    >
       <View style={styles.form}>
-        
         <InputApp iconName="mail" iconColor="#FF2D55" placeholder="Email Anda" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
         <InputApp iconName="at" iconColor="#AF52DE" prefix="@" placeholder="Username Anda" value={username} onChangeText={setUsername} autoCapitalize="none" />
         <InputApp iconName="person" iconColor="#007AFF" placeholder="Nama Lengkap Anda" value={fullName} onChangeText={setFullName} />
-
         <CustomPhoneNumberApp countryCode={countryCode} setCountryCode={setCountryCode} phoneNumber={phoneNumber} setPhoneNumber={setPhoneNumber} />
         <CustomSelectApp options={genderOptions} selectedValue={gender} onSelect={setGender} placeholder="Pilih Jenis Kelamin" iconName="male-female" iconColor="#FF9500" />
-
-        <InputApp 
-          iconName="calendar" iconColor="#5856D6" 
-          placeholder="DD/MM/YYYY (Klik ikon)" 
-          value={birthDate} onChangeText={handleTypeDate} keyboardType="numeric" maxLength={10} 
-          onLeftIconPress={toggleCalendar}
-        />
-
-        {showCalendar && (
-          <DateTimePicker 
-            value={new Date()} 
-            mode="date" 
-            display="default" 
-            onValueChange={handleValueChange} 
-            onDismiss={handleDismiss}
-            maximumDate={new Date()} 
-          />
-        )}
-
+        <InputApp iconName="calendar" iconColor="#5856D6" placeholder="DD/MM/YYYY (Klik ikon)" value={birthDate} onChangeText={handleTypeDate} keyboardType="numeric" maxLength={10} onLeftIconPress={() => {LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowCalendar(true);}} />
+        {showCalendar && <DateTimePicker value={new Date()} mode="date" display="default" onValueChange={handleValueChange} onDismiss={() => setShowCalendar(false)} maximumDate={new Date()} />}
         <TouchableOpacity style={styles.button} onPress={handleRegisterSubmit} disabled={loading} activeOpacity={0.8}>
           {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Daftar Akun</Text>}
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => router.push('/screens/auth/LoginScreenApp')} style={styles.switchScreen} activeOpacity={0.7}>
+      <TouchableOpacity onPress={handleGoToLogin} style={styles.switchScreen} activeOpacity={0.7}>
         <Text style={styles.switchText}>Sudah punya akun? <Text style={styles.link}>Masuk</Text></Text>
       </TouchableOpacity>
     </AuthLayout>
