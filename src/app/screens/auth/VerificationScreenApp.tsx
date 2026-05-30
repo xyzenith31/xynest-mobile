@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Keyboard, Animated, Easing } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Keyboard, Animated, Easing } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AuthLayout from '../../layouts/AuthLayout';
 import { LoginService } from '@/services/LoginService';
+import { VerifyService } from '@/services/VerifyService';
 import NotificationInteractive, { NotificationType } from '@/components/ui/NotificationInteractiveApp';
+import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 
 export default function VerificationScreenApp() {
   const router = useRouter();
-  const { identifier } = useLocalSearchParams<{ identifier: string }>();
+  const { identifier, type } = useLocalSearchParams<{ identifier: string; type: string }>();
   const [otpCode, setOtpCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isExiting, setIsExiting] = useState<boolean>(false);
@@ -27,40 +29,18 @@ export default function VerificationScreenApp() {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-        easing: Easing.out(Easing.cubic),
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-        easing: Easing.out(Easing.cubic),
-      })
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.cubic) })
     ]).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(bounceAnim, {
-          toValue: -8,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(bounceAnim, {
-          toValue: 0,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        })
+        Animated.timing(bounceAnim, { toValue: -8, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(bounceAnim, { toValue: 0, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
       ])
     ).start();
 
-    setTimeout(() => {
-      textInputRef.current?.focus();
-    }, 400);
+    setTimeout(() => textInputRef.current?.focus(), 400);
   }, []);
 
   useEffect(() => {
@@ -86,12 +66,18 @@ export default function VerificationScreenApp() {
     try {
       setIsLoading(true);
       Keyboard.dismiss();
-      const result = await LoginService.verifyLogin(identifier || '', code);
+
+      let result;
+      if (type === 'register') {
+        result = await VerifyService.verifyRegister(identifier || '', code);
+      } else {
+        result = await LoginService.verifyLogin(identifier || '', code);
+      }
 
       if (result.success) {
         showNotification(
           'Verifikasi Berhasil',
-          'Kode OTP cocok. Selamat datang kembali!',
+          'Kode OTP cocok. Selamat datang!',
           'success',
           () => {
             setNotifVisible(false);
@@ -99,12 +85,18 @@ export default function VerificationScreenApp() {
           }
         );
       } else {
-        showNotification('Verifikasi Gagal', result.error || 'Kode OTP yang Anda masukkan salah.', 'error');
+        showNotification('Verifikasi Gagal', result.error || result.message || 'Kode OTP tidak valid.', 'error');
         setOtpCode('');
         setTimeout(() => textInputRef.current?.focus(), 500);
       }
-    } catch (error) {
-      showNotification('Kesalahan Jaringan', 'Gagal terhubung ke server untuk verifikasi.', 'warning');
+    } catch (error: any) {
+      showNotification(
+        'Koneksi Terputus', 
+        'Anda sedang offline atau server tidak merespon. Silakan nyalakan WiFi atau data seluler Anda.', 
+        'warning'
+      );
+      setOtpCode('');
+      setTimeout(() => textInputRef.current?.focus(), 500);
     } finally {
       setIsLoading(false);
     }
@@ -115,17 +107,22 @@ export default function VerificationScreenApp() {
 
     try {
       setIsLoading(true);
-      const result = await LoginService.requestLogin(identifier || '');
+      let result;
+      if (type === 'register') {
+        result = await VerifyService.resendOTP(identifier || '');
+      } else {
+        result = await LoginService.requestLogin(identifier || '');
+      }
 
       if (result.success) {
         setCountdown(60);
         setCanResend(false);
         showNotification('OTP Dikirim', 'Kode OTP baru telah berhasil dikirim ke perangkat Anda.', 'info');
       } else {
-        showNotification('Gagal Kirim', result.error || 'Gagal mengirim ulang kode OTP.', 'error');
+        showNotification('Gagal Kirim', result.error || result.message || 'Gagal mengirim ulang kode OTP.', 'error');
       }
-    } catch (error) {
-      showNotification('Kesalahan Jaringan', 'Gagal terhubung ke server.', 'warning');
+    } catch (error: any) {
+      showNotification('Koneksi Terputus', 'Server tidak merespon, pastikan internet stabil.', 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -136,38 +133,21 @@ export default function VerificationScreenApp() {
     const finalCode = cleaned.slice(0, otpLength);
     
     setOtpCode(finalCode);
-    
     if (finalCode.length === otpLength) {
       handleVerifyOTP(finalCode);
     }
   };
 
-  const handleBack = () => {
-    setIsExiting(true);
-  };
-
   return (
     <>
-      <Stack.Screen 
-        options={{ 
-          headerShown: false, 
-          presentation: 'transparentModal', 
-          animation: 'none' 
-        }} 
-      />
+      <Stack.Screen options={{ headerShown: false, presentation: 'transparentModal', animation: 'none' }} />
 
       <AuthLayout
         title="Verifikasi OTP"
         subtitle={`Masukkan kode verifikasi unik yang telah kami kirimkan untuk akun ${identifier || ''}`}
         slideDirection="right"
         isExiting={isExiting}
-        onExitComplete={() => {
-          if (router.canGoBack()) {
-            router.back();
-          } else {
-            router.replace('/screens/auth/LoginScreenApp');
-          }
-        }}
+        onExitComplete={() => router.canGoBack() ? router.back() : router.replace('/screens/auth/LoginScreenApp')}
       >
         <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           
@@ -175,8 +155,8 @@ export default function VerificationScreenApp() {
             <Ionicons name="shield-checkmark" size={54} color="#007AFF" />
             <View style={styles.shieldGlow} />
           </Animated.View>
+          
           <View style={styles.otpWrapper}>
-            
             <View style={styles.otpGrid}>
               {Array.from({ length: otpLength }).map((_, index) => {
                 const char = otpCode[index];
@@ -184,17 +164,9 @@ export default function VerificationScreenApp() {
                 return (
                   <View 
                     key={index} 
-                    style={[
-                      styles.otpBox, 
-                      char ? styles.otpBoxFilled : null,
-                      isFocused ? styles.otpBoxFocused : null
-                    ]}
+                    style={[styles.otpBox, char ? styles.otpBoxFilled : null, isFocused ? styles.otpBoxFocused : null]}
                   >
-                    {isLoading && isFocused ? (
-                      <ActivityIndicator size="small" color="#007AFF" />
-                    ) : (
-                      <Text style={styles.otpText}>{char || ''}</Text>
-                    )}
+                    <Text style={styles.otpText}>{char || ''}</Text>
                     {isFocused && !isLoading && <View style={styles.cursor} />}
                   </View>
                 );
@@ -229,21 +201,20 @@ export default function VerificationScreenApp() {
           </View>
         </Animated.View>
 
-        <TouchableOpacity style={styles.capsuleBackButton} onPress={handleBack} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.capsuleBackButton} onPress={() => setIsExiting(true)} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={18} color="#007AFF" style={styles.capsuleIcon} />
           <Text style={styles.capsuleButtonText}>Batal & Kembali</Text>
         </TouchableOpacity>
 
       </AuthLayout>
+      <LoadingSpinnerApp visible={isLoading} />
 
       <NotificationInteractive
         visible={notifVisible}
         title={notifTitle}
         message={notifMessage}
         type={notifType}
-        buttons={[
-          { text: 'Oke, Mengerti', onPress: notifAction }
-        ]}
+        buttons={[{ text: 'Oke, Mengerti', onPress: notifAction }]}
         onDismiss={() => setNotifVisible(false)}
       />
     </>

@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LoginService } from '@/services/LoginService';
 import AuthLayout from '@/app/layouts/AuthLayout';
 import InputApp from '@/components/ui/InputApp';
 import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractiveApp';
+import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 
 export default function LoginScreenApp() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function LoginScreenApp() {
       ]);
     }
     
+    Keyboard.dismiss();
     setLoading(true);
     try {
       const res = await LoginService.requestLogin(identifier.trim());
@@ -48,16 +50,18 @@ export default function LoginScreenApp() {
         );
       } else {
         setLoading(false);
-        showNotification('Gagal Masuk', res.error || 'Akun tidak ditemukan.', 'error', [
+        showNotification('Gagal Masuk', res.error || res.message || 'Akun tidak ditemukan.', 'error', [
           { text: 'Oke', onPress: () => setNotifyVisible(false) }
         ]);
       }
     } catch (err: any) {
       setLoading(false);
-      const errorMessage = err?.response?.data?.error || 'Gagal terhubung ke API server.';
-      showNotification('Error Server', errorMessage, 'error', [
-        { text: 'Oke', onPress: () => setNotifyVisible(false) }
-      ]);
+      showNotification(
+        'Koneksi Terputus', 
+        'Anda sedang offline atau server tidak merespon. Silakan nyalakan WiFi atau data seluler Anda.', 
+        'warning', 
+        [{ text: 'Mengerti', onPress: () => setNotifyVisible(false) }]
+      );
     }
   }, [identifier, router]);
 
@@ -79,13 +83,14 @@ export default function LoginScreenApp() {
         />
 
         <TouchableOpacity style={styles.button} onPress={handleRequestOtp} disabled={loading} activeOpacity={0.8}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Login Akun</Text>}
+          <Text style={styles.btnText}>Login Akun</Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity onPress={() => router.push('/screens/auth/RegisterScreenApp')} style={styles.switchScreen} activeOpacity={0.7}>
         <Text style={styles.switchText}>Belum punya akun? <Text style={styles.link}>Daftar Sekarang</Text></Text>
       </TouchableOpacity>
+      <LoadingSpinnerApp visible={loading} />
 
       <NotificationInteractive
         visible={notifyVisible}

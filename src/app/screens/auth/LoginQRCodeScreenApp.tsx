@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AuthLayout from '../../layouts/AuthLayout';
 import { LoginService } from '@/services/LoginService';
 import NotificationInteractive, { NotificationType } from '@/components/ui/NotificationInteractiveApp';
+import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 
 export default function LoginQRCodeScreenApp() {
   const router = useRouter();
@@ -158,12 +159,7 @@ export default function LoginQRCodeScreenApp() {
         }}
       >
         <View style={styles.container}>
-          {isLoading ? (
-            <View style={styles.loadingWrapper}>
-              <ActivityIndicator size="large" color="#007AFF" />
-              <Text style={styles.loadingText}>Membuat Kode Unik...</Text>
-            </View>
-          ) : qrToken ? (
+          {qrToken ? (
             <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
               
               <View style={styles.qrOuterRing}>
@@ -184,7 +180,7 @@ export default function LoginQRCodeScreenApp() {
                   <View style={styles.iconBox}>
                     <Ionicons name="desktop-outline" size={20} color="#007AFF" />
                   </View>
-                  <Text style={styles.stepText}>Buka aplikasi <Text style={styles.boldText}>XyNest</Text> Desktop, Web, atau Mobile.</Text>
+                  <Text style={styles.stepText}>Buka aplikasi <Text style={styles.boldText}>Xynest</Text> Desktop, Web, atau Mobile.</Text>
                 </View>
 
                 <View style={styles.stepRow}>
@@ -213,6 +209,8 @@ export default function LoginQRCodeScreenApp() {
 
       </AuthLayout>
 
+      <LoadingSpinnerApp visible={isLoading} />
+
       <NotificationInteractive 
         visible={notifVisible}
         title={notifTitle}
@@ -229,8 +227,6 @@ export default function LoginQRCodeScreenApp() {
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', marginVertical: 10, minHeight: 350, },
-  loadingWrapper: { alignItems: 'center', justifyContent: 'center', flex: 1, },
-  loadingText: { marginTop: 16, color: '#8E8E93', fontSize: 15, fontWeight: '500', },
   contentWrapper: { width: '100%', alignItems: 'center', },
   qrOuterRing: { padding: 16, borderRadius: 32, backgroundColor: '#F2F2F7', marginBottom: 32, },
   qrInner: { padding: 12, backgroundColor: '#FFFFFF', borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, },

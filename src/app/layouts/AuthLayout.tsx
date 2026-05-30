@@ -118,7 +118,10 @@ export default function AuthLayout({
         ]} 
         {...panResponder.panHandlers}
       >
-        <ContextMenuApp />
+        
+        <View style={{ position: 'absolute', top: Math.max(insets.top, 20) + 16, right: 12, zIndex: 999 }}>
+          <ContextMenuApp />
+        </View>
 
         <ScrollView 
           contentContainerStyle={styles.scroll} 

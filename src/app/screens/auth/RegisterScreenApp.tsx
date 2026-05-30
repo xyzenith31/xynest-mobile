@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, LayoutAnimation } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, LayoutAnimation, Keyboard } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { RegisterService } from '@/services/RegisterService';
@@ -8,6 +8,7 @@ import InputApp from '@/components/ui/InputApp';
 import CustomSelectApp, { SelectOption } from '@/components/ui/CustomSelectApp';
 import CustomPhoneNumberApp from '@/components/ui/CustomPhoneNumberApp';
 import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractiveApp';
+import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 
 const genderOptions: SelectOption[] = [
   { label: 'Pria', value: 'Pria', iconName: 'male', iconColor: '#007AFF' },
@@ -40,12 +41,8 @@ export default function RegisterScreenApp() {
 
   const handleUsernameChange = (text: string) => {
     let cleanText = text.replace(/\s/g, '');
-    if (cleanText.length > 0 && !cleanText.startsWith('@')) {
-      cleanText = '@' + cleanText;
-    }
-    if (cleanText === '@') {
-      cleanText = '';
-    }
+    if (cleanText.length > 0 && !cleanText.startsWith('@')) cleanText = '@' + cleanText;
+    if (cleanText === '@') cleanText = '';
     setUsername(cleanText);
   };
 
@@ -73,13 +70,13 @@ export default function RegisterScreenApp() {
     if (parts.length !== 3) return 0;
     const birth = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
     const diffMs = Date.now() - birth.getTime();
-    const ageDate = new Date(diffMs); 
-    return Math.abs(ageDate.getUTCFullYear() - 1970);
+    return Math.abs(new Date(diffMs).getUTCFullYear() - 1970);
   };
 
   const executeRegistration = async () => {
     setNotifyVisible(false);
     setLoading(true);
+    Keyboard.dismiss();
     try {
       const payload = {
         email: email.trim(), 
@@ -108,15 +105,18 @@ export default function RegisterScreenApp() {
         );
       } else {
         setLoading(false);
-        showNotification('Gagal Mendaftar', res.error || 'Terjadi kesalahan saat mendaftar, silakan coba lagi.', 'error', [
+        showNotification('Gagal Mendaftar', res.error || res.message || 'Terjadi kesalahan saat mendaftar.', 'error', [
           { text: 'Oke', onPress: () => setNotifyVisible(false) }
         ]);
       }
     } catch (err: any) {
       setLoading(false);
-      showNotification('Error', 'Gagal terhubung ke API server.', 'error', [
-        { text: 'Oke', onPress: () => setNotifyVisible(false) }
-      ]);
+      showNotification(
+        'Koneksi Bermasalah', 
+        'Anda sedang offline atau server tidak merespon. Silakan nyalakan WiFi atau data seluler Anda.', 
+        'warning', 
+        [{ text: 'Mengerti', onPress: () => setNotifyVisible(false) }]
+      );
     }
   };
 
@@ -127,8 +127,7 @@ export default function RegisterScreenApp() {
       ]);
     }
     
-    const age = calculateAge(birthDate);
-    if (age < 17) { 
+    if (calculateAge(birthDate) < 17) { 
       return showNotification('Pendaftaran Ditolak', 'Maaf, umur Anda terlalu rendah untuk menggunakan layanan ini.', 'error', [
         { text: 'Oke', onPress: () => setNotifyVisible(false) }
       ]);
@@ -145,8 +144,6 @@ export default function RegisterScreenApp() {
     );
   };
 
-  
-
   return (
     <AuthLayout 
       slideDirection="right" 
@@ -157,16 +154,7 @@ export default function RegisterScreenApp() {
     >
       <View style={styles.form}>
         <InputApp iconName="mail" iconColor="#FF2D55" placeholder="Email Anda" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-        
-        <InputApp 
-          iconName="at" 
-          iconColor="#AF52DE" 
-          placeholder="Username Anda" 
-          value={username} 
-          onChangeText={handleUsernameChange} 
-          autoCapitalize="none" 
-        />
-        
+        <InputApp iconName="at" iconColor="#AF52DE" placeholder="Username Anda" value={username} onChangeText={handleUsernameChange} autoCapitalize="none" />
         <InputApp iconName="person" iconColor="#007AFF" placeholder="Nama Lengkap Anda" value={fullName} onChangeText={setFullName} />
         <CustomPhoneNumberApp countryCode={countryCode} setCountryCode={setCountryCode} phoneNumber={phoneNumber} setPhoneNumber={setPhoneNumber} />
         <CustomSelectApp options={genderOptions} selectedValue={gender} onSelect={setGender} placeholder="Pilih Jenis Kelamin" iconName="male-female" iconColor="#FF9500" />
@@ -175,13 +163,14 @@ export default function RegisterScreenApp() {
         {showCalendar && <DateTimePicker value={new Date()} mode="date" display="default" onValueChange={handleValueChange} onDismiss={() => setShowCalendar(false)} maximumDate={new Date()} />}
         
         <TouchableOpacity style={styles.button} onPress={handleRegisterSubmit} disabled={loading} activeOpacity={0.8}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Daftar Akun</Text>}
+          <Text style={styles.btnText}>Daftar Akun</Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity onPress={handleGoToLogin} style={styles.switchScreen} activeOpacity={0.7}>
         <Text style={styles.switchText}>Sudah punya akun? <Text style={styles.link}>Masuk</Text></Text>
       </TouchableOpacity>
+      <LoadingSpinnerApp visible={loading} />
 
       <NotificationInteractive
         visible={notifyVisible}
