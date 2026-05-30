@@ -1,33 +1,61 @@
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LoginService } from '@/services/LoginService';
 import AuthLayout from '@/app/layouts/AuthLayout';
 import InputApp from '@/components/ui/InputApp';
+import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractive';
 
 export default function LoginScreenApp() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
+  const [notifyVisible, setNotifyVisible] = useState(false);
+  const [notifyConfig, setNotifyConfig] = useState({title: '', message: '', type: 'info' as NotificationType, buttons: [] as NotificationButton[]});
+
+  const showNotification = (title: string, message: string, type: NotificationType, buttons: NotificationButton[]) => {
+    setNotifyConfig({ title, message, type, buttons });
+    setNotifyVisible(true);
+  };
 
   const handleRequestOtp = useCallback(async () => {
-    if (!identifier.trim()) return Alert.alert('Error', 'Input wajib diisi, bro!');
+    if (!identifier.trim()) {
+      return showNotification('Form Tidak Lengkap', 'Input wajib diisi, bro!', 'warning', [
+        { text: 'Oke', onPress: () => setNotifyVisible(false) }
+      ]);
+    }
+    
     setLoading(true);
     try {
       const res = await LoginService.requestLogin(identifier.trim());
       if (res.success) {
         setLoading(false);
-        router.push({
-          pathname: '/screens/auth/VerificationScreenApp' as any,
-          params: { type: 'login', identifier: identifier.trim() }
-        });
+        showNotification(
+          'Akun Ditemukan', 
+          'Kode verifikasi telah dikirim. Klik Oke untuk melanjutkan.', 
+          'success', 
+          [{ 
+            text: 'Oke', 
+            onPress: () => {
+              setNotifyVisible(false);
+              router.push({
+                pathname: '/screens/auth/VerificationScreenApp' as any,
+                params: { type: 'login', identifier: identifier.trim() }
+              });
+            }
+          }]
+        );
       } else {
-        Alert.alert('Gagal', res.error || 'Identitas tidak ditemukan.');
         setLoading(false);
+        showNotification('Gagal Masuk', res.error || 'Akun tidak ditemukan.', 'error', [
+          { text: 'Oke', onPress: () => setNotifyVisible(false) }
+        ]);
       }
     } catch (err: any) {
-      Alert.alert('Error', 'Gagal terhubung ke API server.');
       setLoading(false);
+      showNotification('Error', 'Gagal terhubung ke API server.', 'error', [
+        { text: 'Oke', onPress: () => setNotifyVisible(false) }
+      ]);
     }
   }, [identifier, router]);
 
@@ -49,13 +77,22 @@ export default function LoginScreenApp() {
         />
 
         <TouchableOpacity style={styles.button} onPress={handleRequestOtp} disabled={loading} activeOpacity={0.8}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Minta Kode Verifikasi</Text>}
+          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Login Akun</Text>}
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity onPress={() => router.push('/screens/auth/RegisterScreenApp')} style={styles.switchScreen} activeOpacity={0.7}>
         <Text style={styles.switchText}>Belum punya akun? <Text style={styles.link}>Daftar Sekarang</Text></Text>
       </TouchableOpacity>
+
+      <NotificationInteractive
+        visible={notifyVisible}
+        title={notifyConfig.title}
+        message={notifyConfig.message}
+        type={notifyConfig.type}
+        buttons={notifyConfig.buttons}
+        onDismiss={() => setNotifyVisible(false)}
+      />
     </AuthLayout>
   );
 }
