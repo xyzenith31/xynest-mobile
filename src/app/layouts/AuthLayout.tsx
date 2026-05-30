@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, Image, LogBox } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Text, View, ScrollView, Image, LogBox, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 LogBox.ignoreLogs([
@@ -15,6 +15,16 @@ interface AuthLayoutProps {
 }
 
 export default function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true })
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView 
@@ -22,21 +32,18 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.logoContainer}>
-          <Image 
-            source={require('@/assets/images/mylogo.png')} 
-            style={styles.logo} 
-            resizeMode="contain" 
-          />
-        </View>
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+          <View style={styles.logoContainer}>
+            <Image source={require('@/assets/images/mylogo.png')} style={styles.logo} resizeMode="contain" />
+          </View>
 
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
+          <View style={styles.header}>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          </View>
 
-        {children}
-
+          {children}
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );

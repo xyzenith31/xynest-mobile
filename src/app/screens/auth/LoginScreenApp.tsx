@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LoginService } from '@/services/LoginService';
@@ -10,7 +10,7 @@ export default function LoginScreenApp() {
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleRequestOtp = async () => {
+  const handleRequestOtp = useCallback(async () => {
     if (!identifier.trim()) return Alert.alert('Error', 'Input wajib diisi, bro!');
     setLoading(true);
 
@@ -30,10 +30,10 @@ export default function LoginScreenApp() {
       Alert.alert('Error', 'Gagal terhubung ke API server.');
       setLoading(false);
     }
-  };
+  }, [identifier, router]);
 
   return (
-    <AuthLayout title="Selamat Datang" subtitle="Masuk ke XyNest dengan Email atau Nomor Handphone Anda">
+    <AuthLayout title="Selamat Datang" subtitle="Masuk ke Xynest dengan Email atau Nomor Handphone Anda">
       <View style={styles.form}>
         <InputApp
           iconName="person"
@@ -44,12 +44,12 @@ export default function LoginScreenApp() {
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <TouchableOpacity style={styles.button} onPress={handleRequestOtp} disabled={loading}>
+        <TouchableOpacity style={styles.button} onPress={handleRequestOtp} disabled={loading} activeOpacity={0.8}>
           {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Minta Kode Verifikasi</Text>}
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => router.push('/screens/auth/RegisterScreenApp')} style={styles.switchScreen}>
+      <TouchableOpacity onPress={() => router.push('/screens/auth/RegisterScreenApp')} style={styles.switchScreen} activeOpacity={0.7}>
         <Text style={styles.switchText}>Belum punya akun? <Text style={styles.link}>Daftar Sekarang</Text></Text>
       </TouchableOpacity>
     </AuthLayout>
@@ -58,13 +58,7 @@ export default function LoginScreenApp() {
 
 const styles = StyleSheet.create({
   form: { marginTop: 10 },
-  button: { 
-    backgroundColor: '#007AFF', 
-    paddingVertical: 14,
-    borderRadius: 25, 
-    alignItems: 'center', 
-    marginTop: 8,
-  },
+  button: { backgroundColor: '#007AFF', paddingVertical: 14, borderRadius: 25, alignItems: 'center', marginTop: 8 },
   btnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
   switchScreen: { marginTop: 32, alignItems: 'center' },
   switchText: { fontSize: 14, color: '#636366' },
