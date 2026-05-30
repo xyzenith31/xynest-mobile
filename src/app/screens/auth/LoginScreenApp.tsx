@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LoginService } from '@/services/LoginService';
 import AuthLayout from '@/app/layouts/AuthLayout';
+import InputApp from '@/components/ui/InputApp';
 
 export default function LoginScreenApp() {
   const router = useRouter();
@@ -15,7 +16,6 @@ export default function LoginScreenApp() {
 
     try {
       const res = await LoginService.requestLogin(identifier.trim());
-
       if (res.success) {
         setLoading(false);
         router.push({
@@ -27,18 +27,18 @@ export default function LoginScreenApp() {
         setLoading(false);
       }
     } catch (err: any) {
-      Alert.alert('Error', 'Gagal terhubung ke API server. Pastikan Backend berjalan!');
+      Alert.alert('Error', 'Gagal terhubung ke API server.');
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout title="Selamat Datang" subtitle="Masuk dengan Email atau Nomor Handphone XyNest Anda">
+    <AuthLayout title="Selamat Datang" subtitle="Masuk ke XyNest dengan Email atau Nomor Handphone Anda">
       <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email, @username, atau +62..."
-          placeholderTextColor="#8E8E93"
+        <InputApp
+          iconName="person"
+          iconColor="#007AFF"
+          placeholder="Email, @username, atau nomor..."
           value={identifier}
           onChangeText={setIdentifier}
           autoCapitalize="none"
@@ -50,18 +50,23 @@ export default function LoginScreenApp() {
       </View>
 
       <TouchableOpacity onPress={() => router.push('/screens/auth/RegisterScreenApp')} style={styles.switchScreen}>
-        <Text style={styles.switchText}>Belum punya akun? <Text style={styles.link}>Daftar</Text></Text>
+        <Text style={styles.switchText}>Belum punya akun? <Text style={styles.link}>Daftar Sekarang</Text></Text>
       </TouchableOpacity>
     </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { gap: 12 },
-  input: { backgroundColor: '#F2F2F7', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, fontSize: 15, color: '#1C1C1E' },
-  button: { backgroundColor: '#007AFF', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 4 },
-  btnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
-  switchScreen: { marginTop: 24, alignItems: 'center' },
+  form: { marginTop: 10 },
+  button: { 
+    backgroundColor: '#007AFF', 
+    paddingVertical: 14,
+    borderRadius: 25, 
+    alignItems: 'center', 
+    marginTop: 8,
+  },
+  btnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  switchScreen: { marginTop: 32, alignItems: 'center' },
   switchText: { fontSize: 14, color: '#636366' },
-  link: { color: '#007AFF', fontWeight: '600' }
+  link: { color: '#007AFF', fontWeight: 'bold' }
 });
