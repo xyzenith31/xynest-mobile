@@ -1,260 +1,274 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Keyboard, AppState } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Keyboard, Animated, Easing } from 'react-native';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AuthLayout from '../../layouts/AuthLayout';
 import { LoginService } from '@/services/LoginService';
-import { VerifyService } from '@/services/VerifyService';
-import AuthLayout from '@/app/layouts/AuthLayout';
-import NotificationInteractive, { NotificationType, NotificationButton } from '@/components/ui/NotificationInteractiveApp';
+import NotificationInteractive, { NotificationType } from '@/components/ui/NotificationInteractiveApp';
 
 export default function VerificationScreenApp() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ type?: string; identifier?: string }>();
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const inputRefs = useRef<Array<TextInput | null>>([]);
-  const [loading, setLoading] = useState(false);
-  const [isExiting, setIsExiting] = useState(false); 
-  const identifier = params.identifier || '';
-  const authType = params.type || 'login';
-  const [countdown, setCountdown] = useState(0);
-  const [notifyVisible, setNotifyVisible] = useState(false);
-  const [notifyConfig, setNotifyConfig] = useState({title: '', message: '', type: 'info' as NotificationType, buttons: [] as NotificationButton[]});
-
-  const showNotification = (title: string, message: string, type: NotificationType, buttons: NotificationButton[]) => {
-    setNotifyConfig({ title, message, type, buttons });
-    setNotifyVisible(true);
-  };
+  const { identifier } = useLocalSearchParams<{ identifier: string }>();
+  const [otpCode, setOtpCode] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isExiting, setIsExiting] = useState<boolean>(false);
+  const [countdown, setCountdown] = useState<number>(60);
+  const [canResend, setCanResend] = useState<boolean>(false);
+  const [notifVisible, setNotifVisible] = useState(false);
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifMessage, setNotifMessage] = useState('');
+  const [notifType, setNotifType] = useState<NotificationType>('info');
+  const [notifAction, setNotifAction] = useState<() => void>(() => {});
+  const textInputRef = useRef<TextInput>(null);
+  const otpLength = 6;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(15)).current;
+  const bounceAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const checkTimer = async () => {
-      const storedTime = await AsyncStorage.getItem(`@resend_otp_time_${identifier}`);
-      if (storedTime) {
-        const endTime = parseInt(storedTime, 10);
-        const remaining = Math.floor((endTime - Date.now()) / 1000);
-        if (remaining > 0) {
-          setCountdown(remaining);
-        } else {
-          await AsyncStorage.removeItem(`@resend_otp_time_${identifier}`);
-        }
-      }
-    };
-    checkTimer();
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      })
+    ]).start();
 
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: -8,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bounceAnim, {
+          toValue: 0,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        })
+      ])
+    ).start();
 
-    return () => clearInterval(interval);
-  }, [identifier]);
+    setTimeout(() => {
+      textInputRef.current?.focus();
+    }, 400);
+  }, []);
 
-
-  const handleOtpChange = (text: string, index: number) => {
-    const cleanText = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-    
-    if (cleanText.length > 1) {
-      const pastedData = cleanText.split('').slice(0, 6);
-      const newOtp = ['', '', '', '', '', ''];
-      pastedData.forEach((char, i) => { newOtp[i] = char; });
-      setOtp(newOtp);
-      const lastFilled = pastedData.length - 1;
-      if (lastFilled >= 0 && lastFilled < 6) {
-        inputRefs.current[lastFilled]?.focus();
-      }
-      return;
-    }
-
-    const newOtp = [...otp];
-    newOtp[index] = cleanText;
-    setOtp(newOtp);
-
-    if (cleanText && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleVerifySubmit = async () => {
-    const otpCode = otp.join('');
-    if (otpCode.length < 6) {
-      return showNotification('Error', 'Kode verifikasi belum lengkap (6 digit)!', 'warning', [
-        { text: 'Oke', onPress: () => setNotifyVisible(false) }
-      ]);
-    }
-
-    Keyboard.dismiss();
-    setLoading(true);
-    try {
-      let res;
-      if (authType === 'register') {
-        res = await VerifyService.verifyRegister(identifier, otpCode);
-      } else {
-        res = await LoginService.verifyLogin(identifier, otpCode);
-      }
-
-      if (res && res.success) {
-        setLoading(false);
-        showNotification('Sukses', 'Kode verifikasi benar. Memasuki beranda...', 'success', [
-          { 
-            text: 'Oke', 
-            onPress: () => {
-              setNotifyVisible(false);
-              router.replace('/screens/other/HomeScreenApp');
-            } 
-          }
-        ]);
-      } else {
-        setLoading(false);
-        showNotification('Gagal', res?.error || 'Kode verifikasi salah atau kedaluwarsa.', 'error', [
-          { text: 'Oke', onPress: () => setNotifyVisible(false) }
-        ]);
-      }
-    } catch (err) {
-      setLoading(false);
-      showNotification('Error', 'Gagal terhubung ke API server verifikasi.', 'error', [
-        { text: 'Oke', onPress: () => setNotifyVisible(false) }
-      ]);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (countdown > 0) return;
-    
-    setLoading(true);
-    try {
-      const res = await VerifyService.resendOTP(identifier);
-      if (res && res.success) {
-        const endTime = Date.now() + 30000;
-        await AsyncStorage.setItem(`@resend_otp_time_${identifier}`, endTime.toString());
-        setCountdown(30);
-
-        showNotification('Terkirim', 'Kode verifikasi berhasil dikirim ulang!', 'success', [
-          { 
-            text: 'Oke', 
-            onPress: () => {
-              setNotifyVisible(false);
-              setOtp(['', '', '', '', '', '']);
-              inputRefs.current[0]?.focus(); 
-            } 
-          }
-        ]);
-      } else {
-        showNotification('Gagal', res?.error || 'Gagal mengirim ulang kode OTP.', 'error', [
-          { text: 'Oke', onPress: () => setNotifyVisible(false) }
-        ]);
-      }
-    } catch (err) {
-      showNotification('Error', 'Gagal terhubung ke server saat kirim ulang OTP.', 'error', [
-        { text: 'Oke', onPress: () => setNotifyVisible(false) }
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoBack = useCallback(() => setIsExiting(true), []);
-  const handleExitComplete = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
     } else {
-      router.replace('/screens/auth/LoginScreenApp');
+      setCanResend(true);
     }
-  }, [router]);
+  }, [countdown]);
+
+  const showNotification = (title: string, message: string, type: NotificationType, action?: () => void) => {
+    setNotifTitle(title);
+    setNotifMessage(message);
+    setNotifType(type);
+    setNotifAction(() => action || (() => setNotifVisible(false)));
+    setNotifVisible(true);
+  };
+
+  const handleVerifyOTP = async (code: string) => {
+    if (code.length !== otpLength) return;
+    
+    try {
+      setIsLoading(true);
+      Keyboard.dismiss();
+      const result = await LoginService.verifyLogin(identifier || '', code);
+
+      if (result.success) {
+        showNotification(
+          'Verifikasi Berhasil',
+          'Kode OTP cocok. Selamat datang kembali!',
+          'success',
+          () => {
+            setNotifVisible(false);
+            router.replace('/screens/other/HomeScreenApp');
+          }
+        );
+      } else {
+        showNotification('Verifikasi Gagal', result.error || 'Kode OTP yang Anda masukkan salah.', 'error');
+        setOtpCode('');
+        setTimeout(() => textInputRef.current?.focus(), 500);
+      }
+    } catch (error) {
+      showNotification('Kesalahan Jaringan', 'Gagal terhubung ke server untuk verifikasi.', 'warning');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (!canResend) return;
+
+    try {
+      setIsLoading(true);
+      const result = await LoginService.requestLogin(identifier || '');
+
+      if (result.success) {
+        setCountdown(60);
+        setCanResend(false);
+        showNotification('OTP Dikirim', 'Kode OTP baru telah berhasil dikirim ke perangkat Anda.', 'info');
+      } else {
+        showNotification('Gagal Kirim', result.error || 'Gagal mengirim ulang kode OTP.', 'error');
+      }
+    } catch (error) {
+      showNotification('Kesalahan Jaringan', 'Gagal terhubung ke server.', 'warning');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const finalCode = cleaned.slice(0, otpLength);
+    
+    setOtpCode(finalCode);
+    
+    if (finalCode.length === otpLength) {
+      handleVerifyOTP(finalCode);
+    }
+  };
+
+  const handleBack = () => {
+    setIsExiting(true);
+  };
 
   return (
-    <AuthLayout
-      slideDirection="right"
-      isExiting={isExiting} 
-      onExitComplete={handleExitComplete}
-      title="Verifikasi OTP"
-      subtitle={`Masukkan 6 digit kode yang telah kami kirimkan ke\n${identifier}`}
-    >
-      <View style={styles.container}>
-        <View style={styles.iconWrapper}>
-          <Ionicons name="shield-checkmark" size={64} color="#007AFF" />
-        </View>
-
-        <View style={styles.otpContainer}>
-          {otp.map((digit, index) => (
-            <TextInput
-              key={index}
-              ref={(ref) => { inputRefs.current[index] = ref; }} 
-              style={[
-                styles.capsule, 
-                digit ? styles.capsuleActive : styles.capsuleInactive
-              ]}
-              value={digit}
-              onChangeText={(text) => handleOtpChange(text, index)}
-              onKeyPress={(e) => handleKeyPress(e, index)}
-              keyboardType="default" 
-              autoCapitalize="characters"
-              maxLength={6} 
-              textAlign="center"
-              selectTextOnFocus
-            />
-          ))}
-        </View>
-
-        <TouchableOpacity style={styles.button} onPress={handleVerifySubmit} disabled={loading} activeOpacity={0.8}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Verifikasi Akun</Text>}
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.resendBtn} 
-          onPress={handleResendOtp} 
-          disabled={loading || countdown > 0} 
-          activeOpacity={0.7}
-        >
-          <Text style={styles.resendTxt}>
-            {countdown > 0 
-              ? `Tunggu ${countdown} detik untuk kirim ulang` 
-              : 'Belum menerima kode? '}
-            {countdown === 0 && <Text style={styles.link}>Kirim Ulang</Text>}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={handleGoBack} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back-outline" size={16} color="#007AFF" style={styles.backIcon} />
-          <Text style={styles.link}>Kembali</Text>
-        </TouchableOpacity>
-        
-      </View>
-      
-      <NotificationInteractive
-        visible={notifyVisible}
-        title={notifyConfig.title}
-        message={notifyConfig.message}
-        type={notifyConfig.type}
-        buttons={notifyConfig.buttons}
-        onDismiss={() => setNotifyVisible(false)}
+    <>
+      <Stack.Screen 
+        options={{ 
+          headerShown: false, 
+          presentation: 'transparentModal', 
+          animation: 'none' 
+        }} 
       />
-    </AuthLayout>
+
+      <AuthLayout
+        title="Verifikasi OTP"
+        subtitle={`Masukkan kode verifikasi unik yang telah kami kirimkan untuk akun ${identifier || ''}`}
+        slideDirection="right"
+        isExiting={isExiting}
+        onExitComplete={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/screens/auth/LoginScreenApp');
+          }
+        }}
+      >
+        <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          
+          <Animated.View style={[styles.shieldIconContainer, { transform: [{ translateY: bounceAnim }] }]}>
+            <Ionicons name="shield-checkmark" size={54} color="#007AFF" />
+            <View style={styles.shieldGlow} />
+          </Animated.View>
+          <View style={styles.otpWrapper}>
+            
+            <View style={styles.otpGrid}>
+              {Array.from({ length: otpLength }).map((_, index) => {
+                const char = otpCode[index];
+                const isFocused = index === otpCode.length;
+                return (
+                  <View 
+                    key={index} 
+                    style={[
+                      styles.otpBox, 
+                      char ? styles.otpBoxFilled : null,
+                      isFocused ? styles.otpBoxFocused : null
+                    ]}
+                  >
+                    {isLoading && isFocused ? (
+                      <ActivityIndicator size="small" color="#007AFF" />
+                    ) : (
+                      <Text style={styles.otpText}>{char || ''}</Text>
+                    )}
+                    {isFocused && !isLoading && <View style={styles.cursor} />}
+                  </View>
+                );
+              })}
+            </View>
+
+            <TextInput
+              ref={textInputRef}
+              value={otpCode}
+              onChangeText={handleInputChange}
+              maxLength={otpLength}
+              keyboardType="default"
+              autoCapitalize="characters"
+              textContentType="oneTimeCode" 
+              autoComplete="one-time-code"
+              style={styles.hiddenInput}
+              caretHidden
+            />
+          </View>
+
+          <View style={styles.resendContainer}>
+            {canResend ? (
+              <TouchableOpacity onPress={handleResendOTP} activeOpacity={0.6} style={styles.resendButton}>
+                <Ionicons name="refresh-outline" size={16} color="#007AFF" style={styles.resendIcon} />
+                <Text style={styles.resendTextActive}>Kirim Ulang Kode OTP</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.resendTextDisabled}>
+                Kirim ulang dalam <Text style={styles.boldTimer}>{countdown} detik</Text>
+              </Text>
+            )}
+          </View>
+        </Animated.View>
+
+        <TouchableOpacity style={styles.capsuleBackButton} onPress={handleBack} activeOpacity={0.7}>
+          <Ionicons name="arrow-back-outline" size={18} color="#007AFF" style={styles.capsuleIcon} />
+          <Text style={styles.capsuleButtonText}>Batal & Kembali</Text>
+        </TouchableOpacity>
+
+      </AuthLayout>
+
+      <NotificationInteractive
+        visible={notifVisible}
+        title={notifTitle}
+        message={notifMessage}
+        type={notifType}
+        buttons={[
+          { text: 'Oke, Mengerti', onPress: notifAction }
+        ]}
+        onDismiss={() => setNotifVisible(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 10 },
-  iconWrapper: { alignItems: 'center', marginBottom: 24 },
-  otpContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  capsule: { width: 48, height: 56, borderRadius: 14, fontSize: 22, fontWeight: '700', color: '#1C1C1E', borderWidth: 1.5 },
-  capsuleInactive: { backgroundColor: '#F2F2F7',borderColor: '#E5E5EA' },
-  capsuleActive: { backgroundColor: '#E5F1FF',borderColor: '#007AFF' },
-  button: { backgroundColor: '#007AFF', paddingVertical: 15, borderRadius: 25, alignItems: 'center',shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  btnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold', letterSpacing: 0.5 },
-  resendBtn: { alignItems: 'center', marginTop: 24 },
-  resendTxt: { fontSize: 14, color: '#636366' },
-  link: { color: '#007AFF', fontWeight: 'bold' },
-  backBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 20 },
-  backIcon: { marginRight: 6 }
+  container: { alignItems: 'center', marginVertical: 20, width: '100%' },
+  shieldIconContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 24, position: 'relative' },
+  shieldGlow: { position: 'absolute', width: 60, height: 60, backgroundColor: '#007AFF', borderRadius: 30, opacity: 0.15, zIndex: -1, transform: [{ scale: 1.3 }] },
+  otpWrapper: { position: 'relative', width: '100%', alignItems: 'center', marginBottom: 24 },
+  otpGrid: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%' },
+  hiddenInput: { position: 'absolute', width: '100%', height: '100%', opacity: 0 },
+  otpBox: { width: 48, height: 56, borderRadius: 12, backgroundColor: '#F2F2F7', justifyContent: 'center', alignItems: 'center', marginHorizontal: 4, borderWidth: 1.5, borderColor: 'transparent', position: 'relative' },
+  otpBoxFilled: { backgroundColor: '#FFFFFF', borderColor: '#E5E5EA' },
+  otpBoxFocused: { backgroundColor: '#FFFFFF', borderColor: '#007AFF', shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 },
+  otpText: { fontSize: 22, fontWeight: '700', color: '#1C1C1E' },
+  cursor: { position: 'absolute', width: 2, height: 22, backgroundColor: '#007AFF' },
+  resendContainer: { marginTop: 8, alignItems: 'center', justifyContent: 'center', height: 40 },
+  resendButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  resendIcon: { marginRight: 6 },
+  resendTextActive: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
+  resendTextDisabled: { color: '#8E8E93', fontSize: 14, fontWeight: '500' },
+  boldTimer: { fontWeight: '700', color: '#3A3A3C' },
+  capsuleBackButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginTop: 40, paddingVertical: 14, paddingHorizontal: 32, backgroundColor: '#E5F1FF', borderRadius: 30, width: '80%' },
+  capsuleIcon: { marginRight: 8 },
+  capsuleButtonText: { color: '#007AFF', fontSize: 15, fontWeight: '700' }
 });
