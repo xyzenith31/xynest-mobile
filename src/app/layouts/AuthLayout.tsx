@@ -119,7 +119,7 @@ export default function AuthLayout({
         {...panResponder.panHandlers}
       >
         
-        <View style={{ position: 'absolute', top: Math.max(insets.top, 20) + 16, right: 12, zIndex: 999 }}>
+        <View style={{ position: 'absolute', top: Math.max(insets.top, 10) + 4, right: 4, zIndex: 999 }}>
           <ContextMenuApp />
         </View>
 

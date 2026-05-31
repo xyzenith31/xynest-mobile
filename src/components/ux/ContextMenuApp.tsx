@@ -19,13 +19,13 @@ export default function ContextMenuApp() {
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
-          friction: 6,
-          tension: 40,
+          friction: 5,
+          tension: 80,
           useNativeDriver: true,
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
-          duration: 150,
+          duration: 80,
           easing: Easing.out(Easing.ease),
           useNativeDriver: true,
         }),
@@ -37,13 +37,13 @@ export default function ContextMenuApp() {
     Animated.parallel([
       Animated.timing(scaleAnim, {
         toValue: 0.8,
-        duration: 150,
+        duration: 80,   
         easing: Easing.in(Easing.ease),
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: 0,
-        duration: 150,
+        duration: 80,
         easing: Easing.in(Easing.ease),
         useNativeDriver: true,
       }),
@@ -108,12 +108,12 @@ export default function ContextMenuApp() {
 }
 
 const styles = StyleSheet.create({
-  container: { position: 'absolute', top: 10, right: 10, zIndex: 999, },
-  triggerButton: { padding: 10, backgroundColor: 'transparent', },
-  overlay: { position: 'absolute', top: -100, right: -100, width, height, },
-  menuContainer: { position: 'absolute', top: 45, right: 10, backgroundColor: '#FFFFFF', borderRadius: 12, paddingVertical: 8, width: 200, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 5, },
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, },
-  icon: { marginRight: 12, },
-  menuText: { fontSize: 15, color: '#1C1C1E', fontWeight: '500', },
-  divider: { height: 1, backgroundColor: '#F2F2F7', marginHorizontal: 16, }
+  container: { position: 'absolute', top: 0, right: 0, zIndex: 999 },
+  triggerButton: { padding: 10, backgroundColor: 'transparent' },
+  overlay: { position: 'absolute', top: -100, right: -100, width, height },
+  menuContainer: { position: 'absolute', top: 40, right: 10, backgroundColor: '#FFFFFF', borderRadius: 12, paddingVertical: 8, width: 200, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 5 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
+  icon: { marginRight: 12 },
+  menuText: { fontSize: 15, color: '#1C1C1E', fontWeight: '500' },
+  divider: { height: 1, backgroundColor: '#F2F2F7', marginHorizontal: 16 }
 });
