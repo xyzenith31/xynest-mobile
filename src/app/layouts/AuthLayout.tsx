@@ -129,7 +129,7 @@ export default function AuthLayout({
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.logoContainer}>
-            <Image source={require('@/assets/images/mylogo.png')} style={styles.logo} resizeMode="contain" />
+            <Image source={require('@/assets/mylogo.png')} style={styles.logo} resizeMode="contain" />
           </View>
 
           <View style={styles.header}>

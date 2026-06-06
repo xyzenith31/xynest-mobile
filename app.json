@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "xynest-mobile",
-    "slug": "xynest-mobile",
+    "name": "Xynest",
+    "slug": "xynest",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/mylogo.png",
+    "icon": "./assets/mylogo.png",
     "scheme": "xynestmobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/mylogo.png",
+      "icon": "./assets/mylogo.png",
       "bundleIdentifier": "com.anonymous.xynestmobile"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/mylogo.png"
+        "foregroundImage": "./assets/mylogo.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.xynestmobile"
@@ -29,7 +29,7 @@
         {
           "backgroundColor": "#208AEF",
           "android": {
-            "image": "./assets/images/mylogo.png",
+            "image": "./assets/mylogo.png",
             "imageWidth": 120
           }
         }

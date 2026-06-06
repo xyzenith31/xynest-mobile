@@ -20,7 +20,7 @@ const getDevelopmentBaseUrl = (): string => {
     }
   }
   
-  const FALLBACK_IP = '192.168.1.10';
+  const FALLBACK_IP = '192.168.1.3';
   return `http://${FALLBACK_IP}:3000`;
 };
 
