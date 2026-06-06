@@ -81,26 +81,28 @@ export class DeviceService {
   }
 
   static async authorizeQRLogin(
-    qrToken: string, 
-    deviceModel?: string, 
-    platform?: string
-  ): Promise<{ success: boolean; message?: string; error?: string }> {
-    const token = await authDb.getToken();
-    if (!token) return { success: false, error: 'Tidak ada sesi lokal.' };
+  qrToken: string, 
+  deviceModel?: string, 
+  platform?: string,
+  osVersion?: string 
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  const token = await authDb.getToken();
+  if (!token) return { success: false, error: 'Tidak ada sesi lokal.' };
 
-    try {
-      const response = await fetch(`${API_URL}/qr/authorize`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          qr_token: qrToken,
-          device_model: deviceModel,
-          platform: platform
-        })
-      });
+  try {
+    const response = await fetch(`${API_URL}/qr/authorize`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        qr_token: qrToken,
+        device_model: deviceModel,
+        platform: platform,
+        os_version: osVersion 
+      })
+    });
       
       const result = await response.json();
 

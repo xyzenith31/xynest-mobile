@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Alert, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { DeviceService, DeviceSession } from '@/services/DeviceService';
 import { authDb } from '@/databases/AuthDatabase';
 import AppLayout from '../../layouts/AppLayout';
@@ -77,13 +78,15 @@ export default function DeviceManagerScreenApp() {
     let extractedToken = data;
     let targetPlatform = 'Website';
     let targetModel = 'Desktop Login via QR';
-
+    let targetOsVersion = 'Unknown OS'; 
+    
     try {
       const parsed = JSON.parse(data);
       if (parsed.type === 'xy_login') {
         extractedToken = parsed.token;
         targetPlatform = parsed.platform || targetPlatform;
         targetModel = parsed.device_model || targetModel;
+        targetOsVersion = parsed.os_version || targetOsVersion; 
       } else {
         Alert.alert("Gagal", "Format QR Code tidak dikenali.");
         return;
@@ -101,43 +104,62 @@ export default function DeviceManagerScreenApp() {
           text: "Otorisasi",
           onPress: async () => {
             setLoading(true);
-            const res = await DeviceService.authorizeQRLogin(extractedToken, targetModel, targetPlatform);
+            const res = await DeviceService.authorizeQRLogin(extractedToken, targetModel, targetPlatform, targetOsVersion);
             
             if (res.success) {
-              Alert.alert("Sukses", res.message || "Sesi berhasil diberikan ke perangkat baru.");
-              fetchDevices();
-            } else {
-              Alert.alert("Gagal", res.error || "Gagal mengotorisasi perangkat.");
-              setLoading(false);
+                Alert.alert("Sukses", res.message || "Sesi berhasil diberikan ke perangkat baru.");
+                fetchDevices();
+              } else {
+                Alert.alert("Gagal", res.error || "Gagal mengotorisasi perangkat.");
+                setLoading(false);
+              }
             }
           }
-        }
       ]
     );
   };
 
-  const renderDeviceItem = ({ item }: { item: DeviceSession }) => (
-    <View style={styles.deviceCard}>
-      <View style={styles.deviceInfo}>
-        <View style={styles.headerRow}>
-          <Text style={styles.deviceModel}>{item.device_model || 'Unknown Device'}</Text>
-          {item.is_current_device && (
-            <View style={styles.badgeActive}>
-              <Text style={styles.badgeText}>Perangkat Ini</Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.deviceDetail}>{item.platform || 'Unknown OS'} • OS {item.os_version || 'Unknown'}</Text>
-      </View>
+  const renderDeviceItem = ({ item }: { item: DeviceSession }) => {
+    const isQRLogin = item.device_model.includes('(via QR)');
+    const displayModel = item.device_model.replace('(via QR)', '').trim();
 
-      <TouchableOpacity 
-        style={styles.removeBtn} 
-        onPress={() => handleRemoveDevice(item)}
-      >
-        <Text style={styles.removeBtnText}>Keluarkan</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    let displayOs = item.os_version || 'Unknown';
+    if (displayOs.startsWith('OS ')) {
+      displayOs = displayOs.replace('OS ', '');
+    }
+
+    return (
+      <View style={styles.deviceCard}>
+        <View style={styles.deviceInfo}>
+          <View style={styles.headerRow}>
+            {isQRLogin && (
+              <Ionicons name="qr-code-outline" size={16} color="#8E8E93" style={{ marginRight: 6 }} />
+            )}
+            <Text style={styles.deviceModel}>{displayModel || 'Unknown Device'}</Text>
+            
+            {item.is_current_device && (
+              <View style={styles.badgeActive}>
+                <Text style={styles.badgeText}>Perangkat Ini</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.deviceDetail}>{item.platform || 'Unknown OS'} • {displayOs}</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.removeBtn} 
+          onPress={() => handleRemoveDevice(item)}
+        >
+          <Text style={styles.removeBtnText}>Keluarkan</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const sortedDevices = [...devices].sort((a, b) => {
+    if (a.is_current_device && !b.is_current_device) return -1;
+    if (!a.is_current_device && b.is_current_device) return 1;
+    return 0;
+  });
 
   return (
     <AppLayout title="Perangkat Aktif" scrollable={false}>
@@ -157,7 +179,7 @@ export default function DeviceManagerScreenApp() {
         </View>
       ) : (
         <FlatList
-          data={devices}
+          data={sortedDevices}
           keyExtractor={(item, index) => {
             const keyId = item.id || item.device_id || index;
             return keyId.toString();

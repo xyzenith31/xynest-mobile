@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Platform } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Stack, useRouter } from 'expo-router';
+import * as Device from 'expo-device';
 import { Ionicons } from '@expo/vector-icons';
 import AuthLayout from '../../layouts/AuthLayout';
 import { LoginService } from '@/services/LoginService';
@@ -169,7 +170,8 @@ export default function LoginQRCodeScreenApp() {
                       type: 'xy_login', 
                       token: qrToken,
                       platform: Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'android' ? 'Android' : 'Website',
-                      device_model: `Xynest ${Platform.OS === 'ios' ? 'iPhone' : Platform.OS === 'android' ? 'Android' : 'Web'}`
+                      device_model: Device.modelName || 'Unknown Device',
+                      os_version: Device.osVersion ? `OS ${Device.osVersion}` : 'Unknown OS'
                     })}
                     size={200}
                     color="#1C1C1E"
