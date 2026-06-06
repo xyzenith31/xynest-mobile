@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Platform } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +18,7 @@ export default function LoginQRCodeScreenApp() {
   const [notifMessage, setNotifMessage] = useState('');
   const [notifType, setNotifType] = useState<NotificationType>('info');
   const [notifAction, setNotifAction] = useState<() => void>(() => {});
-  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMounted = useRef<boolean>(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -165,7 +165,12 @@ export default function LoginQRCodeScreenApp() {
               <View style={styles.qrOuterRing}>
                 <View style={styles.qrInner}>
                   <QRCode
-                    value={JSON.stringify({ type: 'xy_login', token: qrToken })}
+                    value={JSON.stringify({ 
+                      type: 'xy_login', 
+                      token: qrToken,
+                      platform: Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'android' ? 'Android' : 'Website',
+                      device_model: `Xynest ${Platform.OS === 'ios' ? 'iPhone' : Platform.OS === 'android' ? 'Android' : 'Web'}`
+                    })}
                     size={200}
                     color="#1C1C1E"
                     backgroundColor="transparent"

@@ -74,8 +74,26 @@ export default function DeviceManagerScreenApp() {
   const handleQRScanned = (data: string) => {
     setIsScannerVisible(false);
     
+    let extractedToken = data;
+    let targetPlatform = 'Website';
+    let targetModel = 'Desktop Login via QR';
+
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed.type === 'xy_login') {
+        extractedToken = parsed.token;
+        targetPlatform = parsed.platform || targetPlatform;
+        targetModel = parsed.device_model || targetModel;
+      } else {
+        Alert.alert("Gagal", "Format QR Code tidak dikenali.");
+        return;
+      }
+    } catch (e) {
+      extractedToken = data;
+    }
+
     Alert.alert(
-      "Otorisasi Login Web/Desktop", 
+      `Otorisasi Login ${targetPlatform}`, 
       `Apakah Anda yakin ingin mengizinkan akses untuk sesi ini?`,
       [
         { text: "Batal", style: "cancel" },
@@ -83,7 +101,7 @@ export default function DeviceManagerScreenApp() {
           text: "Otorisasi",
           onPress: async () => {
             setLoading(true);
-            const res = await DeviceService.authorizeQRLogin(data);
+            const res = await DeviceService.authorizeQRLogin(extractedToken, targetModel, targetPlatform);
             
             if (res.success) {
               Alert.alert("Sukses", res.message || "Sesi berhasil diberikan ke perangkat baru.");

@@ -80,7 +80,11 @@ export class DeviceService {
     }
   }
 
-  static async authorizeQRLogin(qrToken: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  static async authorizeQRLogin(
+    qrToken: string, 
+    deviceModel?: string, 
+    platform?: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
     const token = await authDb.getToken();
     if (!token) return { success: false, error: 'Tidak ada sesi lokal.' };
 
@@ -91,7 +95,11 @@ export class DeviceService {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ qr_token: qrToken })
+        body: JSON.stringify({ 
+          qr_token: qrToken,
+          device_model: deviceModel,
+          platform: platform
+        })
       });
       
       const result = await response.json();
