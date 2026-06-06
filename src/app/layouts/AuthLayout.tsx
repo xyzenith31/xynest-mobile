@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, ScrollView, Image, LogBox, Animated, PanResponder, Dimensions, Easing } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Image, LogBox, Animated, PanResponder, Dimensions, Easing, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Modal from 'react-native-modal';
-
 import ContextMenuApp from '@/components/ux/ContextMenuApp';
+import KeyboardFocus from '@/utils/tools/KeyboardFocus';
 
 LogBox.ignoreLogs([
   'InteractionManager has been deprecated',
@@ -123,22 +123,24 @@ export default function AuthLayout({
           <ContextMenuApp />
         </View>
 
-        <ScrollView 
-          contentContainerStyle={styles.scroll} 
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.logoContainer}>
-            <Image source={require('@/assets/mylogo.png')} style={styles.logo} resizeMode="contain" />
-          </View>
+        <KeyboardFocus offset={Platform.OS === 'ios' ? 10 : 0}>
+          <ScrollView 
+            contentContainerStyle={styles.scroll} 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.logoContainer}>
+              <Image source={require('@/assets/mylogo.png')} style={styles.logo} resizeMode="contain" />
+            </View>
 
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>{subtitle}</Text>
-          </View>
+            <View style={styles.header}>
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.subtitle}>{subtitle}</Text>
+            </View>
 
-          {children}
-        </ScrollView>
+            {children}
+          </ScrollView>
+        </KeyboardFocus>
         
         <View style={styles.footer}>
           <Text style={styles.copyrightText}>© 2026 Copyright by Sambat Corporation</Text>
