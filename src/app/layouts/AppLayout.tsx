@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, View, Text, ScrollView, StatusBar, AppState, Modal, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, StatusBar, AppState, Modal, TouchableOpacity, Alert, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { DeviceService } from '@/services/DeviceService';
+import { UserService } from '@/services/UserService';
 import { BannedService } from '@/services/admin/BannedService';
 import { authDb } from '@/databases/AuthDatabase';
-import { supabase } from '@/config/supabase';
 import NotificationInteractive, { NotificationButton } from '@/components/ui/NotificationInteractiveApp';
 import InputApp from '@/components/ui/InputApp';
 
@@ -19,7 +19,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const router = useRouter();
   
   const isCheckingRef = useRef(false);
-  const isHandlingBanRef = useRef(false);
+  const lastNotifiedStatusRef = useRef('ACTIVE'); // Untuk melacak agar notifikasi tidak spam
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [banNotifyVisible, setBanNotifyVisible] = useState(false);
   const [banNotifyConfig, setBanNotifyConfig] = useState({ title: '', message: '', buttons: [] as NotificationButton[] });
@@ -32,18 +32,25 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     router.replace('/screens/auth/LoginScreenApp');
   };
 
-  const triggerLogoutAndBan = (reason: string) => {
-    if (isHandlingBanRef.current) return;
-
-    isHandlingBanRef.current = true; 
+  const triggerBanNotification = (reason: string, status: string) => {
+    const isPending = status === 'PENDING';
 
     setBanNotifyConfig({
-      title: 'Akun Ditangguhkan',
-      message: `Status akun Anda adalah BANNED.\n\nAlasan Admin:\n"${reason}"`,
-      buttons: [
-        { text: 'Keluar', style: 'cancel', onPress: () => {
+      title: isPending ? 'Banding Diproses' : 'Akun Ditangguhkan',
+      message: isPending
+        ? `Akun Anda sedang ditangguhkan dan banding sedang dalam proses peninjauan oleh admin.\n\nAlasan:\n"${reason}"`
+        : `Status akun Anda adalah BANNED.\n\nAlasan Admin:\n"${reason}"`,
+      buttons: isPending ? [
+        { text: 'Keluar Aplikasi', style: 'cancel', onPress: () => {
+            BackHandler.exitApp();
+        }},
+        { text: 'Logout Akun', style: 'default', onPress: () => {
             setBanNotifyVisible(false);
             handleForceLogout();
+        }}
+      ] : [
+        { text: 'Tutup', style: 'cancel', onPress: () => {
+            setBanNotifyVisible(false);
         }},
         { text: 'Ajukan Banding', style: 'default', onPress: () => {
             setBanNotifyVisible(false);
@@ -56,63 +63,15 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
   useEffect(() => {
     let isMounted = true;
-    let realtimeChannel: any = null;
 
     const initializeAuth = async () => {
       const user = await authDb.getSession(); 
       if (isMounted) setCurrentUser(user);
-
-      if (user?.id) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('status, banned_users(reason)')
-          .eq('id', user.id)
-          .single();
-
-        if (userData?.status === 'BANNED' || userData?.status === 'PENDING') {
-          const bannedInfo: any = userData?.banned_users;
-          const reason = Array.isArray(bannedInfo) 
-            ? bannedInfo[0]?.reason 
-            : bannedInfo?.reason;
-            
-          triggerLogoutAndBan(reason || 'Melanggar ketentuan layanan.');
-        }
-
-        const channelName = `auth_listener_${user.id}_${Date.now()}`;
-        realtimeChannel = supabase.channel(channelName);
-
-        realtimeChannel
-          .on('postgres_changes', { 
-            event: '*', 
-            schema: 'public', 
-            table: 'banned_users', 
-            filter: `user_id=eq.${user.id}` 
-          }, (payload: any) => {
-            if (isMounted && (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE')) {
-              const reason = payload.new?.reason || 'Melanggar ketentuan layanan.';
-              triggerLogoutAndBan(reason);
-            }
-          })
-          .on('postgres_changes', { 
-            event: 'UPDATE', 
-            schema: 'public', 
-            table: 'users', 
-            filter: `id=eq.${user.id}` 
-          }, (payload: any) => {
-            if (isMounted && payload.new?.status === 'BANNED') {
-              triggerLogoutAndBan('Akun Anda telah ditangguhkan oleh admin.');
-            } else if (isMounted && payload.new?.status === 'ACTIVE') {
-              isHandlingBanRef.current = false;
-              setBanNotifyVisible(false);
-              setAppealVisible(false);
-            }
-          })
-          .subscribe();
-      }
+      checkUserStatusAndSession();
     };
 
-    const checkSession = async () => {
-      if (isCheckingRef.current || isHandlingBanRef.current) return; 
+    const checkUserStatusAndSession = async () => {
+      if (isCheckingRef.current) return; 
       
       const token = await authDb.getToken();
       if (!token) return;
@@ -120,34 +79,49 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
       isCheckingRef.current = true;
       try {
         const sessionStatus = await DeviceService.checkSessionValidity();
-        if (sessionStatus === false && isMounted && !isHandlingBanRef.current) {
+        if (sessionStatus === false && isMounted) {
           await handleForceLogout();
+          return;
+        }
+
+        const userStatusRes = await UserService.checkStatus();
+        if (userStatusRes.success && isMounted) {
+          if (userStatusRes.status === 'BANNED' || userStatusRes.status === 'PENDING') {
+
+            if (lastNotifiedStatusRef.current !== userStatusRes.status) {
+              lastNotifiedStatusRef.current = userStatusRes.status;
+              const bannedInfo = userStatusRes.ban_details;
+              const reason = Array.isArray(bannedInfo) ? bannedInfo[0]?.reason : bannedInfo?.reason;
+              triggerBanNotification(reason || 'Melanggar ketentuan layanan.', userStatusRes.status);
+            }
+            
+          } else if (userStatusRes.status === 'ACTIVE') {
+            lastNotifiedStatusRef.current = 'ACTIVE';
+            setBanNotifyVisible(false);
+            setAppealVisible(false);
+          }
         }
       } catch (err: any) {
-        console.log("Error network/server:", err);
+        console.log("Error network/server status check:", err);
       } finally {
         if (isMounted) isCheckingRef.current = false;
       }
     };
 
     initializeAuth();
-    checkSession();
 
     const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active') checkSession();
+      if (nextAppState === 'active') checkUserStatusAndSession();
     });
     
     const interval = setInterval(() => {
-      if (isMounted) checkSession();
-    }, 3000);
+      if (isMounted) checkUserStatusAndSession();
+    }, 5000);
 
     return () => {
       isMounted = false;
       subscription.remove();
       clearInterval(interval);
-      if (realtimeChannel) {
-        supabase.removeChannel(realtimeChannel);
-      }
     };
   }, []);
 
@@ -157,7 +131,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     const identifier = email || username;
 
     if (!identifier) {
-      Alert.alert("Error", "Gagal mengidentifikasi sesi Anda. Silakan keluar dan ajukan banding lewat halaman Login.");
+      Alert.alert("Error", "Gagal mengidentifikasi sesi Anda. Silakan logout dan ajukan banding lewat halaman Login.");
       return;
     }
     
@@ -172,7 +146,8 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
       Alert.alert('Berhasil', 'Banding berhasil dikirim. Menunggu tinjauan admin.', [
         { text: 'Oke', onPress: () => {
             setAppealVisible(false);
-            handleForceLogout(); 
+            lastNotifiedStatusRef.current = 'PENDING';
+            triggerBanNotification(appealReason, 'PENDING');
         }}
       ]);
     } else {
@@ -200,7 +175,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
         visible={banNotifyVisible}
         title={banNotifyConfig.title}
         message={banNotifyConfig.message}
-        type="error"
+        type={banNotifyConfig.title === 'Banding Diproses' ? 'info' : 'error'}
         buttons={banNotifyConfig.buttons}
         onDismiss={() => {}}
       />
@@ -209,17 +184,14 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Ajukan Banding</Text>
-            <Text style={styles.modalSubtitle}>Sesi ditangguhkan. Isi form ini sebelum logout sepenuhnya.</Text>
+            <Text style={styles.modalSubtitle}>Isi form ini untuk meminta peninjauan kembali akun Anda.</Text>
             
             <InputApp iconName="help-circle" iconColor="#8E8E93" placeholder="Alasan (Singkat)" value={appealReason} onChangeText={setAppealReason} />
             <InputApp iconName="document-text" iconColor="#8E8E93" placeholder="Pesan Detail" value={appealText} onChangeText={setAppealText} />
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalBtn, styles.btnCancel]} onPress={() => {
-                setAppealVisible(false);
-                handleForceLogout();
-              }}>
-                <Text style={styles.btnTextCancel}>Keluar</Text>
+              <TouchableOpacity style={[styles.modalBtn, styles.btnCancel]} onPress={() => setAppealVisible(false)}>
+                <Text style={styles.btnTextCancel}>Batal</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalBtn, styles.btnSubmit]} onPress={handleAppealSubmit}>
                 <Text style={styles.btnTextSubmit}>Kirim Banding</Text>

@@ -10,7 +10,6 @@ export class UserService {
         const response = await fetch(`${API_URL}/logout`, {
           method: 'POST',
           headers: { 
-            // HAPUS 'Content-Type': 'application/json' KARENA KITA TIDAK NGIRIM BODY JSON
             'Authorization': `Bearer ${token}` 
           },
         });
@@ -44,6 +43,33 @@ export class UserService {
       } catch (err) {
         console.error("Gagal menembak API hapus akun:", err);
         return { success: false, error: 'Terjadi kesalahan jaringan.' };
+      }
+    }
+    return { success: false, error: 'Sesi lokal tidak valid.' };
+  }
+
+  static async checkStatus() {
+    const token = await authDb.getToken();
+    
+    if (token) {
+      try {
+        const response = await fetch(`${API_URL}/status`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        
+        const textResponse = await response.text();
+
+        try {
+          const result = JSON.parse(textResponse);
+          return result;
+        } catch (parseError) {
+          console.error("Bukan JSON, respons dari server:", textResponse);
+          return { success: false, error: `Endpoint /status mengembalikan HTML (Error ${response.status})` };
+        }
+      } catch (err) {
+        console.error("Gagal menembak API cek status:", err);
+        return { success: false, error: 'Kesalahan jaringan.' };
       }
     }
     return { success: false, error: 'Sesi lokal tidak valid.' };

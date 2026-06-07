@@ -17,8 +17,6 @@ export default function LoginScreenApp() {
   const [appealVisible, setAppealVisible] = useState(false);
   const [appealReason, setAppealReason] = useState('');
   const [appealText, setAppealText] = useState('');
-  const [adminBanReason, setAdminBanReason] = useState('');
-  const [banExpiryDate, setBanExpiryDate] = useState('');
 
   const showNotification = (title: string, message: string, type: NotificationType, buttons: NotificationButton[]) => {
     setNotifyConfig({ title, message, type, buttons });
@@ -46,19 +44,22 @@ export default function LoginScreenApp() {
 
     if (res.success) {
       showNotification(
-        'Banding Terkirim', 
-        'Banding berhasil dikirim. Menunggu tinjauan dari pihak administrator.', 
-        'success', 
-        [{ text: 'Oke', onPress: () => setNotifyVisible(false) }]
+        'Banding Diproses', 
+         'Pesan banding Anda berhasil dikirim dan sedang diproses oleh pihak administrator.', 
+         'info', 
+         [{ text: 'Mengerti', onPress: () => {
+             setNotifyVisible(false);
+             setIdentifier('');
+         }}]
       );
       setAppealReason('');
       setAppealText('');
     } else {
       showNotification(
         'Pengiriman Gagal', 
-        res.error || 'Gagal mengirim banding. Server tidak merespons.', 
-        'error', 
-        [
+         res.error || 'Gagal mengirim banding. Server tidak merespons.', 
+         'error', 
+         [
           { text: 'Coba Lagi', onPress: () => {
               setNotifyVisible(false);
               setAppealVisible(true);
@@ -78,6 +79,7 @@ export default function LoginScreenApp() {
     
     Keyboard.dismiss();
     setLoading(true);
+    
     try {
       const res = await LoginService.requestLogin(identifier.trim());
       setLoading(false);
@@ -89,21 +91,31 @@ export default function LoginScreenApp() {
           const reasonFromAdmin = res.ban_details.reason || 'Melanggar ketentuan layanan.';
           const expiryDate = new Date(res.ban_details.expires_at).toLocaleString('id-ID');
           
-          setAdminBanReason(reasonFromAdmin);
-          setBanExpiryDate(expiryDate);
-          
-          showNotification(
-            'Akun Ditangguhkan', 
-            `Status: Banned\nSelesai: ${expiryDate}\n\nAlasan Admin:\n"${reasonFromAdmin}"`, 
-            'error', 
-            [
-              { text: 'Oke', style: 'cancel', onPress: () => setNotifyVisible(false) },
-              { text: 'Ajukan Banding', style: 'default', onPress: () => {
+          if (res.status === 'PENDING') {
+            showNotification(
+              'Banding Diproses', 
+              `Akun Anda sedang ditangguhkan dan banding masih dalam proses peninjauan oleh admin.\n\nAlasan:\n"${reasonFromAdmin}"`, 
+              'info', 
+              [{ text: 'Mengerti', onPress: () => {
                   setNotifyVisible(false);
-                  setAppealVisible(true); 
-              }}
-            ]
-          );
+                  setIdentifier('');
+              }}]
+            );
+          } else {
+            showNotification(
+              'Akun Ditangguhkan', 
+              `Status: BANNED\nSelesai: ${expiryDate}\n\nAlasan Admin:\n"${reasonFromAdmin}"`, 
+              'error', 
+              [
+                { text: 'Tutup', style: 'cancel', onPress: () => setNotifyVisible(false) },
+                { text: 'Ajukan Banding', style: 'default', onPress: () => {
+                    setNotifyVisible(false);
+                    setAppealVisible(true);
+                }}
+              ]
+            );
+          }
+
         } else {
           showNotification('Gagal Masuk', res.error || res.message || 'Akun tidak ditemukan.', 'error', [
             { text: 'Oke', onPress: () => setNotifyVisible(false) }
@@ -118,36 +130,10 @@ export default function LoginScreenApp() {
     }
   }, [identifier, router]);
 
-  const submitAppeal = async () => {
-    if (!appealReason || !appealText) {
-       return showNotification('Peringatan', 'Harap isi alasan (singkat) dan pesan detail banding.', 'warning', [
-         { text: 'Oke', onPress: () => setNotifyVisible(false) }
-       ]);
-    }
-
-    setAppealVisible(false);
-    setLoading(true);
-    
-    const res = await BannedService.submitAppeal(identifier.trim(), appealReason, appealText);
-    setLoading(false);
-
-    if (res.success) {
-      showNotification('Banding Terkirim', 'Banding berhasil dikirim. Menunggu tinjauan dari pihak administrator.', 'success', [
-        { text: 'Oke', onPress: () => setNotifyVisible(false) }
-      ]);
-      setAppealReason('');
-      setAppealText('');
-    } else {
-      showNotification('Pengiriman Gagal', res.error || 'Gagal mengirim banding.', 'error', [
-        { text: 'Coba Lagi', onPress: () => setNotifyVisible(false) }
-      ]);
-    }
-  };
-
   return (
-    <AuthLayout 
+    <AuthLayout
       slideDirection="left"
-      title="Selamat Datang" 
+      title="Selamat Datang"
       subtitle="Masuk ke Xynest dengan Email atau Nomor Handphone Anda"
     >
       <View style={styles.form}>
@@ -170,6 +156,7 @@ export default function LoginScreenApp() {
         <Text style={styles.switchText}>Belum punya akun? <Text style={styles.link}>Daftar Sekarang</Text></Text>
       </TouchableOpacity>
 
+      {/* Modal Form Ajukan Banding */}
       <Modal visible={appealVisible} transparent animationType="fade" onRequestClose={() => setAppealVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -220,17 +207,6 @@ const styles = StyleSheet.create({
   link: { color: '#007AFF', fontWeight: 'bold' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFF', padding: 24, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.1, elevation: 5 },
-  modalHeader: { marginBottom: 16 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 4, textAlign: 'center' },
-  modalSubtitle: { fontSize: 13, color: '#8E8E93', textAlign: 'center' },
-  banInfoBox: { backgroundColor: '#FFECEB', padding: 12, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#FFD1CF' },
-  banInfoTitle: { fontSize: 12, fontWeight: 'bold', color: '#FF3B30', marginBottom: 4 },
-  banInfoText: { fontSize: 13, color: '#3A3A3C', fontStyle: 'italic', marginBottom: 6 },
-  banExpiryText: { fontSize: 11, color: '#8E8E93', fontWeight: '500' },
-  modalButtons: { flexDirection: 'row', marginTop: 12, justifyContent: 'space-between' },
-  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 25, alignItems: 'center', marginHorizontal: 5 },
-  btnCancel: { backgroundColor: '#F2F2F7' },
-  btnSubmit: { backgroundColor: '#007AFF' },
-  btnTextCancel: { color: '#3A3A3C', fontWeight: 'bold', fontSize: 15 },
-  btnTextSubmit: { color: '#FFF', fontWeight: 'bold', fontSize: 15 }
+  modalSubtitle: { fontSize: 13, color: '#8E8E93', textAlign: 'center', marginBottom: 12 },
 });
