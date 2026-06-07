@@ -1,6 +1,21 @@
+import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
 
-const supabaseUrl = 'https://nvofeoqsrjlzwvfknacp.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52b2Zlb3Fzcmpsend2ZmtuYWNwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTk1MDA5NiwiZXhwIjoyMDk1NTI2MDk2fQ.QtPYoLfJyg-ypa8SzelBkuzhN-PKOojShKEO4mLdnPw';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error(
+    'Peringatan: Variabel lingkungan Supabase tidak ditemukan! pastikan file xynest-mobile/.env sudah dikonfigurasi dengan benar.'
+  );
+}
+
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});

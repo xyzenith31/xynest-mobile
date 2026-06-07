@@ -25,6 +25,50 @@ export default function LoginScreenApp() {
     setNotifyVisible(true);
   };
 
+  const handleAppealSubmit = async () => {
+    if (!identifier.trim()) {
+      return showNotification('Error Identitas', 'Sesi identitas Anda hilang. Silakan isi form login kembali.', 'error', [
+         { text: 'Oke', onPress: () => setNotifyVisible(false) }
+      ]);
+    }
+
+    if (!appealReason.trim() || !appealText.trim()) {
+       return showNotification('Peringatan', 'Harap isi alasan (singkat) dan pesan detail banding dengan lengkap.', 'warning', [
+         { text: 'Mengerti', onPress: () => setNotifyVisible(false) }
+       ]);
+    }
+
+    setAppealVisible(false);
+    setLoading(true);
+    
+    const res = await BannedService.submitAppeal(identifier.trim(), appealReason, appealText);
+    setLoading(false);
+
+    if (res.success) {
+      showNotification(
+        'Banding Terkirim', 
+        'Banding berhasil dikirim. Menunggu tinjauan dari pihak administrator.', 
+        'success', 
+        [{ text: 'Oke', onPress: () => setNotifyVisible(false) }]
+      );
+      setAppealReason('');
+      setAppealText('');
+    } else {
+      showNotification(
+        'Pengiriman Gagal', 
+        res.error || 'Gagal mengirim banding. Server tidak merespons.', 
+        'error', 
+        [
+          { text: 'Coba Lagi', onPress: () => {
+              setNotifyVisible(false);
+              setAppealVisible(true);
+          }},
+          { text: 'Tutup', style: 'cancel', onPress: () => setNotifyVisible(false) }
+        ]
+      );
+    }
+  };
+
   const handleRequestOtp = useCallback(async () => {
     if (!identifier.trim()) {
       return showNotification('Form Tidak Lengkap', 'Email, Username, atau Nomor Ponsel wajib diisi, bro!', 'warning', [
@@ -39,21 +83,7 @@ export default function LoginScreenApp() {
       setLoading(false);
       
       if (res.success) {
-        showNotification(
-          'Akun Ditemukan', 
-          'Kode verifikasi telah dikirim. Klik Oke untuk melanjutkan.', 
-          'success', 
-          [{ 
-            text: 'Oke', 
-            onPress: () => {
-              setNotifyVisible(false);
-              router.push({
-                pathname: '/screens/auth/VerificationScreenApp' as any,
-                params: { type: 'login', identifier: identifier.trim() }
-              });
-            }
-          }]
-        );
+        showNotification('Akun Ditemukan', 'Kode verifikasi telah dikirim. Klik Oke untuk melanjutkan.', 'success', [{ text: 'Oke', onPress: () => { setNotifyVisible(false); router.push({ pathname: '/screens/auth/VerificationScreenApp' as any, params: { type: 'login', identifier: identifier.trim() }}); }}]);
       } else {
         if (res.is_banned && res.ban_details) {
           const reasonFromAdmin = res.ban_details.reason || 'Melanggar ketentuan layanan.';
@@ -67,10 +97,10 @@ export default function LoginScreenApp() {
             `Status: Banned\nSelesai: ${expiryDate}\n\nAlasan Admin:\n"${reasonFromAdmin}"`, 
             'error', 
             [
-              { text: 'Tutup', style: 'cancel', onPress: () => setNotifyVisible(false) },
+              { text: 'Oke', style: 'cancel', onPress: () => setNotifyVisible(false) },
               { text: 'Ajukan Banding', style: 'default', onPress: () => {
                   setNotifyVisible(false);
-                  setTimeout(() => setAppealVisible(true), 300); // Buka modal form banding
+                  setAppealVisible(true); 
               }}
             ]
           );
@@ -140,42 +170,27 @@ export default function LoginScreenApp() {
         <Text style={styles.switchText}>Belum punya akun? <Text style={styles.link}>Daftar Sekarang</Text></Text>
       </TouchableOpacity>
 
-      <Modal visible={appealVisible} transparent animationType="slide" onRequestClose={() => setAppealVisible(false)}>
+      <Modal visible={appealVisible} transparent animationType="fade" onRequestClose={() => setAppealVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Ajukan Banding</Text>
-              <Text style={styles.modalSubtitle}>Berikan penjelasan mengapa pemblokiran ini tidak tepat.</Text>
-            </View>
-
-            <View style={styles.banInfoBox}>
-              <Text style={styles.banInfoTitle}>Alasan Pemblokiran Admin:</Text>
-              <Text style={styles.banInfoText}>"{adminBanReason}"</Text>
-              <Text style={styles.banExpiryText}>Berlaku hingga: {banExpiryDate}</Text>
-            </View>
+            <Text style={styles.modalTitle}>Ajukan Banding</Text>
+            <Text style={styles.modalSubtitle}>Sesi ditangguhkan. Isi form ini untuk mengajukan banding.</Text>
             
-            <InputApp 
-              iconName="help-circle" 
-              iconColor="#FF9500" 
-              placeholder="Alasan Banding (cth: Kesalahan sistem)" 
-              value={appealReason} 
-              onChangeText={setAppealReason} 
-            />
-            
-            <InputApp 
-              iconName="document-text" 
-              iconColor="#007AFF" 
-              placeholder="Jelaskan secara rinci ke Admin" 
-              value={appealText} 
-              onChangeText={setAppealText} 
-            />
+            <InputApp iconName="help-circle" iconColor="#8E8E93" placeholder="Alasan (Singkat)" value={appealReason} onChangeText={setAppealReason} />
+            <InputApp iconName="document-text" iconColor="#8E8E93" placeholder="Pesan Detail" value={appealText} onChangeText={setAppealText} />
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalBtn, styles.btnCancel]} onPress={() => setAppealVisible(false)}>
-                <Text style={styles.btnTextCancel}>Batal</Text>
+            <View style={{ flexDirection: 'row', marginTop: 16, justifyContent: 'space-between' }}>
+              <TouchableOpacity 
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 25, alignItems: 'center', marginHorizontal: 5, backgroundColor: '#FFECEB' }} 
+                onPress={() => setAppealVisible(false)}
+              >
+                <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>Batal</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.btnSubmit]} onPress={submitAppeal}>
-                <Text style={styles.btnTextSubmit}>Kirim Banding</Text>
+              <TouchableOpacity 
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 25, alignItems: 'center', marginHorizontal: 5, backgroundColor: '#007AFF' }} 
+                onPress={handleAppealSubmit}
+              >
+                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Kirim Banding</Text>
               </TouchableOpacity>
             </View>
           </View>
