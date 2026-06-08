@@ -1,13 +1,16 @@
 import * as SQLite from 'expo-sqlite';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface UserSession {
-  id: string;
-  email: string;
-  username: string;
-  full_name: string;
-  gender: string;
-  birth_date: string;
-  phone_number: string;
+  id?: string;
+  email?: string;
+  username?: string;
+  full_name?: string;
+  gender?: string;
+  birth_date?: string;
+  phone_number?: string;
+  profiles?: string;
+  [key: string]: any;
 }
 
 export interface DeviceData {
@@ -70,6 +73,7 @@ class AuthDatabase {
       'INSERT INTO session (user_data, session_token) VALUES (?, ?)',
       [JSON.stringify(user), token]
     );
+    await this.setUserData(user);
   }
 
   public async getSession(): Promise<UserSession | null> {
@@ -77,6 +81,25 @@ class AuthDatabase {
     if (!this.db) return null;
     const result: any = await this.db.getFirstAsync('SELECT user_data FROM session LIMIT 1');
     return result ? JSON.parse(result.user_data) : null;
+  }
+
+  public async getUserData(): Promise<UserSession | null> {
+    try {
+      const data = await AsyncStorage.getItem('user_profile');
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  public async setUserData(data: Partial<UserSession>): Promise<void> {
+    try {
+      const currentData = await this.getUserData();
+      const mergedData = { ...currentData, ...data };
+      await AsyncStorage.setItem('user_profile', JSON.stringify(mergedData));
+    } catch (e) {
+      console.error('Gagal menyimpan user_profile:', e);
+    }
   }
 
   public async getToken(): Promise<string | null> {
@@ -90,6 +113,7 @@ class AuthDatabase {
     if (!this.db) return;
     await this.db.runAsync('DELETE FROM session');
     await this.db.runAsync('DELETE FROM devices_cache');
+    await AsyncStorage.removeItem('user_profile');
   }
   
   public async saveDevicesCache(devices: DeviceData[]): Promise<void> {

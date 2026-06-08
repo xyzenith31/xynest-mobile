@@ -26,12 +26,10 @@ export default function SettingScreenApp() {
           onPress: async () => {
             setLoading(true);
             try {
-              // Panggil API logout backend
               await UserService.logout();
             } catch (err) {
               console.error("Gagal menghubungi API logout:", err);
             } finally {
-              // Pastikan sesi lokal selalu dibersihkan terlepas dari status API
               await authDb.clearSession();
               setLoading(false);
               router.replace('/screens/auth/LoginScreenApp');
@@ -65,7 +63,10 @@ export default function SettingScreenApp() {
   return (
     <AppLayout title="Pengaturan">
       <View style={styles.card}>
-        <SettingItem title="Account" />
+        <SettingItem 
+          title="Account / Profil" 
+          onPress={() => router.push('/screens/settings/AccountScreenApp')} 
+        />
         <SettingItem title="Privacy" />
         <SettingItem title="Appearance" />
         <SettingItem title="Notification" />
