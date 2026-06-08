@@ -77,7 +77,10 @@ export default function SettingScreenApp() {
           title="Device Management" 
           onPress={() => router.push('/screens/settings/DeviceManagerScreenApp')} 
         />
-        <SettingItem title="Donation" />
+        <SettingItem 
+          title="Donation" 
+          onPress={() => router.push('/screens/settings/DonationScreenApp')} 
+        />
       </View>
 
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
