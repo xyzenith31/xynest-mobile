@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { 
   StyleSheet, View, Text, ScrollView, StatusBar, AppState, 
-  Modal, TouchableOpacity, Alert, BackHandler, Animated, 
+  Modal, TouchableOpacity, BackHandler, Animated, 
   PanResponder, Dimensions, Easing, TouchableWithoutFeedback
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +35,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const [isAppLoading, setIsAppLoading] = useState(true);
   const isCheckingRef = useRef(false);
   const lastNotifiedStatusRef = useRef('ACTIVE'); 
+  const isConnectedRef = useRef(true); 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [banNotifyVisible, setBanNotifyVisible] = useState(false);
   const [banNotifyConfig, setBanNotifyConfig] = useState({ title: '', message: '', buttons: [] as NotificationButton[] });
@@ -49,6 +50,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const [locationOn, setLocationOn] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState<number>(100);
   const [bluetoothOn, setBluetoothOn] = useState(true);
+
   const handleForceLogout = async () => {
     await authDb.clearSession();
     router.replace('/screens/auth/LoginScreenApp');
@@ -65,7 +67,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
         { text: 'Keluar Aplikasi', style: 'cancel', onPress: () => BackHandler.exitApp() },
         { text: 'Logout Akun', style: 'default', onPress: () => { setBanNotifyVisible(false); handleForceLogout(); } }
       ] : [
-        { text: 'Tutup', style: 'cancel', onPress: () => setBanNotifyVisible(false) },
         { text: 'Ajukan Banding', style: 'default', onPress: () => { setBanNotifyVisible(false); setAppealVisible(true); } }
       ]
     });
@@ -78,12 +79,22 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     const identifier = email || username;
 
     if (!identifier) {
-      Alert.alert("Error", "Gagal mengidentifikasi sesi Anda. Silakan logout dan ajukan banding lewat halaman Login.");
+      setBanNotifyConfig({
+        title: 'Error Sesi',
+        message: 'Gagal mengidentifikasi sesi Anda. Silakan logout dan ajukan banding lewat halaman Login.',
+        buttons: [{ text: 'Logout Akun', style: 'danger', onPress: () => { setBanNotifyVisible(false); handleForceLogout(); } }]
+      });
+      setBanNotifyVisible(true);
       return;
     }
     
     if (!appealReason || !appealText) {
-      Alert.alert("Peringatan", "Harap isi alasan dan detail banding.");
+      setBanNotifyConfig({
+        title: 'Peringatan',
+        message: 'Harap isi semua alasan dan detail isi banding sebelum mengirim.',
+        buttons: [{ text: 'Mengerti', style: 'default', onPress: () => setBanNotifyVisible(false) }]
+      });
+      setBanNotifyVisible(true);
       return;
     }
 
@@ -92,15 +103,33 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     setIsAppLoading(false);
     
     if (res.success) {
-      Alert.alert('Berhasil', 'Banding berhasil dikirim. Menunggu tinjauan admin.', [
-        { text: 'Oke', onPress: () => {
-            setAppealVisible(false);
-            lastNotifiedStatusRef.current = 'PENDING';
-            triggerBanNotification(appealReason, 'PENDING');
-        }}
-      ]);
+      lastNotifiedStatusRef.current = 'PENDING';
+      setAppealVisible(false);
+      
+      setBanNotifyConfig({
+        title: 'Berhasil',
+        message: 'Banding berhasil dikirim. Menunggu tinjauan dari admin.',
+        buttons: [
+          { 
+            text: 'Oke', 
+            style: 'default', 
+            onPress: () => {
+              setBanNotifyVisible(false);
+              setTimeout(() => {
+                triggerBanNotification(appealReason, 'PENDING');
+              }, 350);
+            } 
+          }
+        ]
+      });
+      setBanNotifyVisible(true);
     } else {
-      Alert.alert('Gagal', res.error || 'Terjadi kesalahan saat mengirim banding.');
+      setBanNotifyConfig({
+        title: 'Gagal Kirim',
+        message: res.error || 'Terjadi kesalahan internal saat mengirim data banding.',
+        buttons: [{ text: 'Coba Lagi', style: 'danger', onPress: () => setBanNotifyVisible(false) }]
+      });
+      setBanNotifyVisible(true);
     }
   };
 
@@ -142,7 +171,24 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
   useEffect(() => {
     let isMounted = true;
+    const initializeAuthAndProfile = async () => {
+      const user = await authDb.getSession(); 
+      if (isMounted) setCurrentUser(user);
+      
+      const cachedData = await authDb.getUserData();
+      if (cachedData && isMounted) setUserData({ full_name: cachedData.full_name ?? '', profileUrl: cachedData.profiles ?? null });
+      
+      const result = await UserService.getProfile();
+      if (result.success && result.data && isMounted) {
+        setUserData({ full_name: result.data.full_name ?? '', profileUrl: result.data.profiles ?? null });
+      }
+    };
+    initializeAuthAndProfile();
+    return () => { isMounted = false; };
+  }, []);
 
+  useEffect(() => {
+    let isMounted = true;
     const checkUserStatusAndSession = async () => {
       if (isCheckingRef.current) return; 
       const token = await authDb.getToken();
@@ -178,38 +224,37 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
       }
     };
 
-    const initializeAuthAndProfile = async () => {
-      const user = await authDb.getSession(); 
-      if (isMounted) setCurrentUser(user);
-      
-      const cachedData = await authDb.getUserData();
-      if (cachedData && isMounted) setUserData({ full_name: cachedData.full_name ?? '', profileUrl: cachedData.profiles ?? null });
-      
-      const result = await UserService.getProfile();
-      if (result.success && result.data && isMounted) {
-        setUserData({ full_name: result.data.full_name ?? '', profileUrl: result.data.profiles ?? null });
-      }
+    checkUserStatusAndSession();
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') checkUserStatusAndSession();
+    });
+    const banInterval = setInterval(() => { if (isMounted) checkUserStatusAndSession(); }, 5000);
 
-      checkUserStatusAndSession();
+    return () => {
+      isMounted = false;
+      subscription.remove();
+      clearInterval(banInterval);
     };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
 
     const initHardware = async () => {
       await Location.requestForegroundPermissionsAsync();
-      
       const currentBattery = await Battery.getBatteryLevelAsync();
       if (currentBattery > 0 && isMounted) setBatteryLevel(Math.round(currentBattery * 100));
       
       const locEnabled = await Location.hasServicesEnabledAsync();
       if (isMounted) setLocationOn(locEnabled);
-
       if (isMounted) setIsAppLoading(false);
     };
 
-    initializeAuthAndProfile();
     initHardware();
 
     const unsubscribeNet = NetInfo.addEventListener(state => {
       if (isMounted) {
+        isConnectedRef.current = state.isConnected ?? false;
         let netName = 'Offline';
         if (state.isConnected) {
           if (state.type === 'wifi') {
@@ -231,7 +276,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     });
 
     const checkPing = async () => {
-      if (!network.isConnected) return;
+      if (!isConnectedRef.current) return;
       const start = Date.now();
       try {
         await fetch('https://clients3.google.com/generate_204', { cache: 'no-store' });
@@ -245,26 +290,20 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     const locationInterval = setInterval(async () => {
       try {
         const locEnabled = await Location.hasServicesEnabledAsync();
-        if (isMounted && locEnabled !== locationOn) setLocationOn(locEnabled);
+        if (isMounted) {
+            setLocationOn(prev => prev !== locEnabled ? locEnabled : prev);
+        }
       } catch (e) {}
     }, 2000);
 
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active') checkUserStatusAndSession();
-    });
-
-    const banInterval = setInterval(() => { if (isMounted) checkUserStatusAndSession(); }, 5000);
-
     return () => {
       isMounted = false;
-      subscription.remove();
-      clearInterval(banInterval);
       unsubscribeNet();
-      clearInterval(pingInterval);
       batterySubscription.remove();
+      clearInterval(pingInterval);
       clearInterval(locationInterval);
     };
-  }, [network.isConnected, locationOn]);
+  }, []);
 
   const handleNavigation = (route: any) => {
     closeDrawer();
@@ -295,6 +334,13 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   ) : (
     <View style={styles.content}>{children}</View>
   );
+
+  const getNotificationType = () => {
+    if (banNotifyConfig.title === 'Berhasil') return 'success';
+    if (banNotifyConfig.title === 'Banding Diproses') return 'info';
+    if (banNotifyConfig.title === 'Peringatan') return 'warning';
+    return 'error';
+  };
 
   return (
     <View style={styles.root}>
@@ -382,9 +428,9 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
         visible={banNotifyVisible}
         title={banNotifyConfig.title}
         message={banNotifyConfig.message}
-        type={banNotifyConfig.title === 'Banding Diproses' ? 'info' : 'error'}
+        type={getNotificationType()}
         buttons={banNotifyConfig.buttons}
-        onDismiss={() => {}}
+        onDismiss={() => {}} 
       />
 
       <Modal visible={appealVisible} transparent animationType="fade" onRequestClose={() => {}}>
