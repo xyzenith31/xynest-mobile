@@ -68,9 +68,16 @@ export default function RegisterScreenApp() {
   const calculateAge = (dateString: string) => {
     const parts = dateString.split('/');
     if (parts.length !== 3) return 0;
-    const birth = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-    const diffMs = Date.now() - birth.getTime();
-    return Math.abs(new Date(diffMs).getUTCFullYear() - 1970);
+    const formattedDate = `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
+    const birth = new Date(formattedDate + 'T00:00:00Z');
+    const today = new Date();
+    
+    let age = today.getUTCFullYear() - birth.getUTCFullYear();
+    const m = today.getUTCMonth() - birth.getUTCMonth();
+    if (m < 0 || (m === 0 && today.getUTCDate() < birth.getUTCDate())) {
+      age--;
+    }
+    return age;
   };
 
   const executeRegistration = async () => {
