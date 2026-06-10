@@ -1,7 +1,10 @@
+// src/app/index.tsx
 import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter, useRootNavigationState } from 'expo-router';
 import { DeviceService } from '@/services/DeviceService';
+import SplashScreenApp from './screens/other/SplashScreenApp';
+import * as SplashScreen from 'expo-splash-screen';
 
 export default function RootNavigationIndex() {
   const router = useRouter();
@@ -12,7 +15,15 @@ export default function RootNavigationIndex() {
 
     const checkRedirect = async () => {
       try {
-        const isLoggedIn = await DeviceService.checkSessionValidity();
+        // Sembunyikan native splash screen di sini karena RootNavigationIndex sudah sukses termuat
+        await SplashScreen.hideAsync();
+
+        // Tahan tampilan kustom splash screen selama 2 detik untuk menampilkan animasi desain lu
+        const minimumSplashTime = new Promise(resolve => setTimeout(resolve, 2000));
+        const sessionCheck = DeviceService.checkSessionValidity();
+        
+        const [isLoggedIn] = await Promise.all([sessionCheck, minimumSplashTime]);
+
         if (isLoggedIn) {
           router.replace('/screens/other/HomeScreenApp');
         } else {
@@ -27,13 +38,6 @@ export default function RootNavigationIndex() {
     checkRedirect();
   }, [rootNavigationState?.key]);
 
-  return (
-    <View style={styles.center}>
-      <ActivityIndicator size="large" color="#007AFF" />
-    </View>
-  );
+  // Render komponen splash screen buatan lu langsung tanpa jeda
+  return <SplashScreenApp />;
 }
-
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F2F2F7' }
-});
