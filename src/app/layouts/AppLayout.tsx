@@ -1,14 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { 
-  StyleSheet, View, Text, ScrollView, StatusBar, AppState, 
-  Modal, TouchableOpacity, BackHandler, Animated, 
-  PanResponder, Dimensions, Easing, TouchableWithoutFeedback
-} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { BluetoothStateManager } from 'react-native-bluetooth-state-manager';
+import type { BluetoothState } from 'react-native-bluetooth-state-manager';
 import * as Location from 'expo-location';
 import * as Battery from 'expo-battery';
+import * as Device from 'expo-device';
 import NetInfo from '@react-native-community/netinfo';
 import { DeviceService } from '@/services/DeviceService';
 import { UserService } from '@/services/UserService';
@@ -18,6 +16,14 @@ import NotificationInteractive, { NotificationButton } from '@/components/ui/Not
 import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 import InputApp from '@/components/ui/InputApp';
 import { Avatar } from '@/components/ux/Avatar';
+import { useAppearance } from '@/utils/tools/AppearanceApp'; 
+import { useLanguage } from '@/utils/tools/LanguageApp';   
+import { 
+  StyleSheet, View, Text, ScrollView, StatusBar, AppState, 
+  Modal, TouchableOpacity, BackHandler, Animated, 
+  PanResponder, Dimensions, Easing, TouchableWithoutFeedback,
+  Platform 
+} from 'react-native';  
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -32,7 +38,9 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const [isAppLoading, setIsAppLoading] = useState(true);
+  const { theme, isDarkMode, accentColor } = useAppearance();
+  const { t_appLayout: t } = useLanguage();
+  const [isAppLoading, setIsAppLoading] = useState(false); 
   const isCheckingRef = useRef(false);
   const lastNotifiedStatusRef = useRef('ACTIVE'); 
   const isConnectedRef = useRef(true); 
@@ -45,11 +53,21 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const [userData, setUserData] = useState({ full_name: '', profileUrl: null as string | null });
   const panX = useRef(new Animated.Value(0)).current;
   const isDrawerOpen = useRef(false);
-  const [network, setNetwork] = useState({ isConnected: true, name: 'Mendeteksi...' });
+  const pullAnim = useRef(new Animated.Value(0)).current;
+  const [network, setNetwork] = useState({ isConnected: true, name: t?.hw_detecting || 'Mendeteksi...' });
   const [pingMs, setPingMs] = useState<number>(0);
   const [locationOn, setLocationOn] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState<number>(100);
   const [bluetoothOn, setBluetoothOn] = useState(true);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pullAnim, { toValue: 1, duration: 800, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        Animated.timing(pullAnim, { toValue: 0, duration: 800, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+      ])
+    ).start();
+  }, [pullAnim]);
 
   const handleForceLogout = async () => {
     await authDb.clearSession();
@@ -59,15 +77,13 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const triggerBanNotification = (reason: string, status: string) => {
     const isPending = status === 'PENDING';
     setBanNotifyConfig({
-      title: isPending ? 'Banding Diproses' : 'Akun Ditangguhkan',
-      message: isPending
-        ? `Akun Anda sedang ditangguhkan dan banding sedang dalam proses peninjauan oleh admin.\n\nAlasan:\n"${reason}"`
-        : `Status akun Anda adalah BANNED.\n\nAlasan Admin:\n"${reason}"`,
+      title: isPending ? t?.ban_pending_title : t?.ban_title,
+      message: isPending ? `${t?.ban_pending_msg}"${reason}"` : `${t?.ban_msg}"${reason}"`,
       buttons: isPending ? [
-        { text: 'Keluar Aplikasi', style: 'cancel', onPress: () => BackHandler.exitApp() },
-        { text: 'Logout Akun', style: 'default', onPress: () => { setBanNotifyVisible(false); handleForceLogout(); } }
+        { text: t?.btn_exit, style: 'cancel', onPress: () => BackHandler.exitApp() },
+        { text: t?.btn_logout, style: 'default', onPress: () => { setBanNotifyVisible(false); handleForceLogout(); } }
       ] : [
-        { text: 'Ajukan Banding', style: 'default', onPress: () => { setBanNotifyVisible(false); setAppealVisible(true); } }
+        { text: t?.btn_appeal, style: 'default', onPress: () => { setBanNotifyVisible(false); setAppealVisible(true); } }
       ]
     });
     setBanNotifyVisible(true);
@@ -80,9 +96,9 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
     if (!identifier) {
       setBanNotifyConfig({
-        title: 'Error Sesi',
-        message: 'Gagal mengidentifikasi sesi Anda. Silakan logout dan ajukan banding lewat halaman Login.',
-        buttons: [{ text: 'Logout Akun', style: 'danger', onPress: () => { setBanNotifyVisible(false); handleForceLogout(); } }]
+        title: t?.err_session_title,
+        message: t?.err_session_msg,
+        buttons: [{ text: t?.btn_logout, style: 'danger', onPress: () => { setBanNotifyVisible(false); handleForceLogout(); } }]
       });
       setBanNotifyVisible(true);
       return;
@@ -90,9 +106,9 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     
     if (!appealReason || !appealText) {
       setBanNotifyConfig({
-        title: 'Peringatan',
-        message: 'Harap isi semua alasan dan detail isi banding sebelum mengirim.',
-        buttons: [{ text: 'Mengerti', style: 'default', onPress: () => setBanNotifyVisible(false) }]
+        title: t?.warn_title,
+        message: t?.warn_msg,
+        buttons: [{ text: t?.btn_understand, style: 'default', onPress: () => setBanNotifyVisible(false) }]
       });
       setBanNotifyVisible(true);
       return;
@@ -105,29 +121,22 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     if (res.success) {
       lastNotifiedStatusRef.current = 'PENDING';
       setAppealVisible(false);
-      
       setBanNotifyConfig({
-        title: 'Berhasil',
-        message: 'Banding berhasil dikirim. Menunggu tinjauan dari admin.',
+        title: t?.success_title,
+        message: t?.success_msg,
         buttons: [
-          { 
-            text: 'Oke', 
-            style: 'default', 
-            onPress: () => {
+          { text: t?.btn_ok, style: 'default', onPress: () => {
               setBanNotifyVisible(false);
-              setTimeout(() => {
-                triggerBanNotification(appealReason, 'PENDING');
-              }, 350);
-            } 
-          }
+              setTimeout(() => { triggerBanNotification(appealReason, 'PENDING'); }, 350);
+          }}
         ]
       });
       setBanNotifyVisible(true);
     } else {
       setBanNotifyConfig({
-        title: 'Gagal Kirim',
-        message: res.error || 'Terjadi kesalahan internal saat mengirim data banding.',
-        buttons: [{ text: 'Coba Lagi', style: 'danger', onPress: () => setBanNotifyVisible(false) }]
+        title: t?.fail_title,
+        message: res.error || 'Internal Error',
+        buttons: [{ text: t?.btn_retry, style: 'danger', onPress: () => setBanNotifyVisible(false) }]
       });
       setBanNotifyVisible(true);
     }
@@ -136,7 +145,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const openDrawer = () => {
     Animated.timing(panX, {
       toValue: DRAWER_WIDTH,
-      duration: 350,
+      duration: 300,
       easing: Easing.out(Easing.bezier(0.25, 1, 0.5, 1)), 
       useNativeDriver: true,
     }).start();
@@ -146,7 +155,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const closeDrawer = () => {
     Animated.timing(panX, {
       toValue: 0,
-      duration: 300,
+      duration: 250,
       easing: Easing.out(Easing.bezier(0.25, 1, 0.5, 1)),
       useNativeDriver: true,
     }).start();
@@ -155,7 +164,13 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        if (!isDrawerOpen.current && gestureState.x0 > 40) {
+          return false;
+        }
+        return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
       onPanResponderMove: (_, gestureState) => {
         let newX = isDrawerOpen.current ? DRAWER_WIDTH + gestureState.dx : gestureState.dx;
         if (newX < 0) newX = 0;
@@ -163,8 +178,14 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
         panX.setValue(newX);
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > SCREEN_WIDTH * 0.2 || (isDrawerOpen.current && gestureState.dx > -SCREEN_WIDTH * 0.2)) openDrawer();
-        else closeDrawer();
+        if (gestureState.dx > SCREEN_WIDTH * 0.15 || gestureState.vx > 0.5) {
+          openDrawer();
+        } else if (gestureState.dx < -SCREEN_WIDTH * 0.15 || gestureState.vx < -0.5) {
+          closeDrawer();
+        } else {
+          if (isDrawerOpen.current) openDrawer();
+          else closeDrawer();
+        }
       },
     })
   ).current;
@@ -172,16 +193,18 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   useEffect(() => {
     let isMounted = true;
     const initializeAuthAndProfile = async () => {
-      const user = await authDb.getSession(); 
-      if (isMounted) setCurrentUser(user);
-      
       const cachedData = await authDb.getUserData();
-      if (cachedData && isMounted) setUserData({ full_name: cachedData.full_name ?? '', profileUrl: cachedData.profiles ?? null });
-      
-      const result = await UserService.getProfile();
-      if (result.success && result.data && isMounted) {
-        setUserData({ full_name: result.data.full_name ?? '', profileUrl: result.data.profiles ?? null });
+      if (cachedData && isMounted) {
+        setUserData({ full_name: cachedData.full_name ?? '', profileUrl: cachedData.profiles ?? null });
       }
+      setTimeout(async () => {
+        const user = await authDb.getSession(); 
+        if (isMounted) setCurrentUser(user);
+        const result = await UserService.getProfile();
+        if (result.success && result.data && isMounted) {
+          setUserData({ full_name: result.data.full_name ?? '', profileUrl: result.data.profiles ?? null });
+        }
+      }, 400);
     };
     initializeAuthAndProfile();
     return () => { isMounted = false; };
@@ -189,81 +212,98 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
   useEffect(() => {
     let isMounted = true;
-    const checkUserStatusAndSession = async () => {
-      if (isCheckingRef.current) return; 
-      const token = await authDb.getToken();
-      if (!token) return;
-
-      isCheckingRef.current = true;
-      try {
-        const sessionStatus = await DeviceService.checkSessionValidity();
-        if (sessionStatus === false && isMounted) {
-          await handleForceLogout();
-          return;
-        }
-
-        const userStatusRes = await UserService.checkStatus();
-        if (userStatusRes.success && isMounted) {
-          if (userStatusRes.status === 'BANNED' || userStatusRes.status === 'PENDING') {
-            if (lastNotifiedStatusRef.current !== userStatusRes.status) {
-              lastNotifiedStatusRef.current = userStatusRes.status;
-              const bannedInfo = userStatusRes.ban_details;
-              const reason = Array.isArray(bannedInfo) ? bannedInfo[0]?.reason : bannedInfo?.reason;
-              triggerBanNotification(reason || 'Melanggar ketentuan layanan.', userStatusRes.status);
-            }
-          } else if (userStatusRes.status === 'ACTIVE') {
-            lastNotifiedStatusRef.current = 'ACTIVE';
-            setBanNotifyVisible(false);
-            setAppealVisible(false);
+    let banInterval: ReturnType<typeof setInterval>;
+    const timer = setTimeout(() => {
+      const checkUserStatusAndSession = async () => {
+        if (isCheckingRef.current) return; 
+        const token = await authDb.getToken();
+        if (!token) return;
+        isCheckingRef.current = true;
+        try {
+          const sessionStatus = await DeviceService.checkSessionValidity();
+          if (sessionStatus === false && isMounted) {
+            await handleForceLogout();
+            return;
           }
+          const userStatusRes = await UserService.checkStatus();
+          if (userStatusRes.success && isMounted) {
+            if (userStatusRes.status === 'BANNED' || userStatusRes.status === 'PENDING') {
+              if (lastNotifiedStatusRef.current !== userStatusRes.status) {
+                lastNotifiedStatusRef.current = userStatusRes.status;
+                const bannedInfo = userStatusRes.ban_details;
+                const reason = Array.isArray(bannedInfo) ? bannedInfo[0]?.reason : bannedInfo?.reason;
+                triggerBanNotification(reason || 'TOS Violation', userStatusRes.status);
+              }
+            } else if (userStatusRes.status === 'ACTIVE') {
+              lastNotifiedStatusRef.current = 'ACTIVE';
+              setBanNotifyVisible(false);
+              setAppealVisible(false);
+            }
+          }
+        } catch (err: any) {
+          console.log("Error status check:", err);
+        } finally {
+          if (isMounted) isCheckingRef.current = false;
         }
-      } catch (err: any) {
-        console.log("Error network/server status check:", err);
-      } finally {
-        if (isMounted) isCheckingRef.current = false;
-      }
-    };
-
-    checkUserStatusAndSession();
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active') checkUserStatusAndSession();
-    });
-    const banInterval = setInterval(() => { if (isMounted) checkUserStatusAndSession(); }, 5000);
-
-    return () => {
-      isMounted = false;
-      subscription.remove();
-      clearInterval(banInterval);
-    };
-  }, []);
+      };
+      checkUserStatusAndSession();
+      banInterval = setInterval(() => { if (isMounted) checkUserStatusAndSession(); }, 10000);
+    }, 600);
+    return () => { isMounted = false; if (banInterval) clearInterval(banInterval); clearTimeout(timer); };
+  }, [t]);
 
   useEffect(() => {
     let isMounted = true;
+    let pingInterval: ReturnType<typeof setInterval>;
+    let locationInterval: ReturnType<typeof setInterval>;
 
-    const initHardware = async () => {
-      await Location.requestForegroundPermissionsAsync();
-      const currentBattery = await Battery.getBatteryLevelAsync();
-      if (currentBattery > 0 && isMounted) setBatteryLevel(Math.round(currentBattery * 100));
-      
-      const locEnabled = await Location.hasServicesEnabledAsync();
-      if (isMounted) setLocationOn(locEnabled);
-      if (isMounted) setIsAppLoading(false);
-    };
+    const timer = setTimeout(() => {
+      const initHardware = async () => {
+        try {
+          const currentBattery = await Battery.getBatteryLevelAsync();
+          if (currentBattery > 0 && isMounted) setBatteryLevel(Math.round(currentBattery * 100));
+          const providerStatus = await Location.getProviderStatusAsync();
+          if (isMounted) setLocationOn(providerStatus.locationServicesEnabled);
+          const btState = await BluetoothStateManager.getState();
+          if (isMounted) setBluetoothOn(btState === 'PoweredOn');
+        } catch(e) {}
+      };
+      initHardware();
 
-    initHardware();
+      const checkPing = async () => {
+        if (!isConnectedRef.current) return;
+        const start = Date.now();
+        try {
+          await fetch('https://clients3.google.com/generate_204', { cache: 'no-store' });
+          if (isMounted) setPingMs(Date.now() - start);
+        } catch (error) { if (isMounted) setPingMs(-1); }
+      };
+      pingInterval = setInterval(checkPing, 6000); 
+
+      locationInterval = setInterval(async () => {
+        try {
+          const providerStatus = await Location.getProviderStatusAsync();
+          if (isMounted) setLocationOn(providerStatus.locationServicesEnabled);
+        } catch (e) {}
+      }, 6000);
+    }, 800);
+
+    const btUnsubscribe = BluetoothStateManager.addListener((bluetoothState: BluetoothState) => {
+      if (isMounted) setBluetoothOn(bluetoothState === 'PoweredOn');
+    }, true);
 
     const unsubscribeNet = NetInfo.addEventListener(state => {
       if (isMounted) {
         isConnectedRef.current = state.isConnected ?? false;
-        let netName = 'Offline';
+        let netName = t?.hw_offline || 'Offline';
         if (state.isConnected) {
           if (state.type === 'wifi') {
             const ssid = (state.details as any)?.ssid;
-            netName = (ssid && ssid !== '<unknown ssid>') ? ssid : 'WiFi Terhubung';
+            netName = (ssid && ssid !== '<unknown ssid>') ? ssid : (t?.hw_wifi_connected || 'WiFi');
           } else if (state.type === 'cellular') {
-            netName = (state.details as any)?.carrier || 'Data Seluler';
+            netName = (state.details as any)?.carrier || (t?.hw_cellular || 'Cellular');
           } else {
-            netName = 'Online';
+            netName = t?.hw_online || 'Online';
           }
         }
         setNetwork({ isConnected: state.isConnected ?? false, name: netName });
@@ -275,58 +315,39 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
       if (isMounted) setBatteryLevel(Math.round(batteryLevel * 100));
     });
 
-    const checkPing = async () => {
-      if (!isConnectedRef.current) return;
-      const start = Date.now();
-      try {
-        await fetch('https://clients3.google.com/generate_204', { cache: 'no-store' });
-        if (isMounted) setPingMs(Date.now() - start);
-      } catch (error) {
-        if (isMounted) setPingMs(-1);
-      }
-    };
-
-    const pingInterval = setInterval(checkPing, 3000); 
-    const locationInterval = setInterval(async () => {
-      try {
-        const locEnabled = await Location.hasServicesEnabledAsync();
-        if (isMounted) {
-            setLocationOn(prev => prev !== locEnabled ? locEnabled : prev);
-        }
-      } catch (e) {}
-    }, 2000);
-
     return () => {
       isMounted = false;
       unsubscribeNet();
       batterySubscription.remove();
-      clearInterval(pingInterval);
-      clearInterval(locationInterval);
+      clearTimeout(timer);
+      if (pingInterval) clearInterval(pingInterval);
+      if (locationInterval) clearInterval(locationInterval);
+      if (btUnsubscribe) btUnsubscribe();
     };
-  }, []);
+  }, [t]);
 
-  const handleNavigation = (route: any) => {
+  const handleNavigation = (route: string) => {
+    if (pathname === route) { closeDrawer(); return; }
     closeDrawer();
-    setTimeout(() => { router.push(route); }, 300);
+    setIsAppLoading(true);
+    setTimeout(() => { router.replace(route as any); setIsAppLoading(false); }, 400); 
   };
 
-  let wifiColor = "#FFFFFF";
-  let pingText = "Offline";
-  if (network.isConnected && pingMs !== -1) {
-    if (pingMs <= 30) wifiColor = "#A4D0A4";
-    else if (pingMs <= 100) wifiColor = "#FFEA79";
-    else wifiColor = "#FFB3B3";
-    pingText = `${pingMs}ms`;
-  }
+  const getNotificationType = () => {
+    if (banNotifyConfig.title === t?.success_title) return 'success';
+    if (banNotifyConfig.title === t?.ban_pending_title) return 'info';
+    if (banNotifyConfig.title === t?.warn_title) return 'warning';
+    return 'error';
+  };
 
   const menuItems = [
-    { id: 'home', title: 'Home', icon: 'home', color: '#007AFF', route: '/screens/other/HomeScreenApp' },
-    { id: 'chats', title: 'My Chats', icon: 'chatbubbles', color: '#34C759', route: '/screens/chats/ChatScreenApp' },
-    { id: 'contacts', title: 'My Contact', icon: 'people', color: '#5856D6', route: '/screens/contacts/ContactScreenApp' },
-    { id: 'tasks', title: 'My Task', icon: 'checkmark-circle', color: '#FF9500', route: '/screens/tasks/TaskScreenApp' },
-    { id: 'location', title: 'My Location', icon: 'location', color: '#FF3B30', route: '/screens/location/LocationScreenApp' },
-    { id: 'settings', title: 'My Settings', icon: 'settings', color: '#8E8E93', route: '/screens/settings/SettingScreenApp' },
-    { id: 'support', title: 'My Supports', icon: 'help-buoy', color: '#00C7BE', route: '/screens/support/SupportScreenApp' },
+    { id: 'home', title: t?.menu_home || 'Home', icon: 'home', route: '/screens/other/HomeScreenApp', color: '#FF2D55' },
+    { id: 'chats', title: t?.menu_chats || 'Chats', icon: 'chatbubbles', route: '/screens/chats/ChatScreenApp', color: '#007AFF' },
+    { id: 'contacts', title: t?.menu_contacts || 'Contacts', icon: 'people', route: '/screens/contacts/ContactScreenApp', color: '#34C759' },
+    { id: 'tasks', title: t?.menu_tasks || 'Tasks', icon: 'checkmark-circle', route: '/screens/tasks/TaskScreenApp', color: '#FF9500' },
+    { id: 'location', title: t?.menu_location || 'Location', icon: 'location', route: '/screens/location/LocationScreenApp', color: '#FF3B30' },
+    { id: 'settings', title: t?.menu_settings || 'Settings', icon: 'settings', route: '/screens/settings/SettingScreenApp', color: '#8E8E93' },
+    { id: 'support', title: t?.menu_support || 'Support', icon: 'help-buoy', route: '/screens/support/SupportScreenApp', color: '#AF52DE' },
   ];
 
   const content = scrollable ? (
@@ -335,49 +356,48 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     <View style={styles.content}>{children}</View>
   );
 
-  const getNotificationType = () => {
-    if (banNotifyConfig.title === 'Berhasil') return 'success';
-    if (banNotifyConfig.title === 'Banding Diproses') return 'info';
-    if (banNotifyConfig.title === 'Peringatan') return 'warning';
-    return 'error';
-  };
-
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View style={[styles.root, { backgroundColor: theme.surface }]}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={theme.surface} />
+      
       <LoadingSpinnerApp visible={isAppLoading} />
 
-      <View style={[styles.sidebarContainer, { paddingTop: insets.top + 20 }]}>
-        <View style={styles.profileCapsule}>
+      <View style={[styles.sidebarContainer, { backgroundColor: theme.surface, paddingTop: insets.top + 20 }]}>
+        <View style={[styles.profileCapsule, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#F2F2F7' }]}>
           <Avatar url={userData.profileUrl} name={userData.full_name || 'User'} size={44} />
           <View style={styles.profileTextContainer}>
-            <Text style={styles.profileName} numberOfLines={1}>{userData.full_name || 'Memuat...'}</Text>
+            <Text style={[styles.profileName, { color: theme.text }]} numberOfLines={1}>{userData.full_name || (t?.loading_user || 'Loading...')}</Text>
           </View>
         </View>
 
-        <View style={styles.hardwareCapsule}>
+        <View style={[styles.hardwareCapsule, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : accentColor }]}>
           <View style={styles.hardwareGrid}>
             <View style={styles.hardwareItem}>
-              <MaterialIcons name={network.isConnected && pingMs !== -1 ? "wifi" : "wifi-off"} size={22} color={wifiColor} />
+              <MaterialIcons name={network.isConnected && pingMs !== -1 ? "wifi" : "wifi-off"} size={22} color={network.isConnected && pingMs !== -1 ? "#007AFF" : "#8E8E93"} />
               <View style={styles.hardwareTextWrapper}>
-                <Text style={styles.hardwareText} numberOfLines={1}>{network.name}</Text>
-                <Text style={[styles.hardwareSubText, {color: wifiColor}]}>{pingText}</Text>
+                <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]} numberOfLines={1}>{network.name}</Text>
+                <Text style={[styles.hardwareSubText, {color: network.isConnected && pingMs !== -1 ? "#007AFF" : "#8E8E93"}]}>{network.isConnected && pingMs !== -1 ? `${pingMs}ms` : (t?.hw_offline || 'Offline')}</Text>
               </View>
             </View>
-            
             <View style={styles.hardwareItem}>
-              <Ionicons name={batteryLevel > 20 ? "battery-half" : "battery-dead"} size={22} color="#FFFFFF" />
-              <Text style={styles.hardwareText}>{batteryLevel}%</Text>
+              <Ionicons name={batteryLevel > 80 ? "battery-full" : batteryLevel > 30 ? "battery-half" : "battery-dead"} size={22} color={batteryLevel > 80 ? "#34C759" : batteryLevel > 30 ? "#FFCC00" : "#FF3B30"} />
+              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]}>{batteryLevel}%</Text>
             </View>
-
             <View style={styles.hardwareItem}>
-              <Ionicons name={locationOn ? "location" : "location-outline"} size={22} color="#FFFFFF" />
-              <Text style={styles.hardwareText}>{locationOn ? "GPS Aktif" : "GPS Mati"}</Text>
+              <MaterialIcons name={locationOn ? "location-on" : "location-off"} size={22} color={locationOn ? "#34A853" : "#8E8E93"} />
+              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]}>{locationOn ? (t?.hw_gps_on || 'Location On') : (t?.hw_gps_off || 'Location Off')}</Text>
             </View>
-
             <View style={styles.hardwareItem}>
-              <Ionicons name={bluetoothOn ? "bluetooth" : "bluetooth-outline"} size={22} color="#FFFFFF" />
-              <Text style={styles.hardwareText}>{bluetoothOn ? "BT Aktif" : "BT Mati"}</Text>
+              <MaterialIcons name={bluetoothOn ? "bluetooth" : "bluetooth-disabled"} size={22} color={bluetoothOn ? "#0082FC" : "#8E8E93"} />
+              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]}>{bluetoothOn ? (t?.hw_bt_on || 'BT On') : (t?.hw_bt_off || 'BT Off')}</Text>
+            </View>
+            <View style={styles.hardwareItem}>
+              <Ionicons name="phone-portrait" size={22} color={isDarkMode ? theme.text : "#A2AAAD"} />
+              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]} numberOfLines={1}>{Device.modelName || 'Unknown Device'}</Text>
+            </View>
+            <View style={styles.hardwareItem}>
+              <Ionicons name={Platform.OS === 'ios' ? 'logo-apple' : 'logo-android'} size={22} color={Platform.OS === 'ios' ? (isDarkMode ? '#FFFFFF' : '#000000') : '#3DDC84'} />
+              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]} numberOfLines={1}>{Platform.OS === 'ios' ? 'iOS' : 'Android'} {Device.osVersion}</Text>
             </View>
           </View>
         </View>
@@ -386,23 +406,34 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
           {menuItems.map((item) => {
             const isActive = pathname === item.route;
             return (
-              <TouchableOpacity key={item.id} style={[styles.menuItem, isActive && styles.menuItemActive]} onPress={() => handleNavigation(item.route)}>
-                <View style={[styles.menuIconBox, isActive ? { backgroundColor: 'transparent' } : { backgroundColor: item.color + '15' }]}>
+              <TouchableOpacity key={item.id} style={[styles.menuItem, isActive && { backgroundColor: accentColor, shadowColor: accentColor, elevation: 4, shadowOpacity: 0.3, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8 }]} onPress={() => handleNavigation(item.route)}>
+                <View style={[styles.menuIconBox, isActive ? { backgroundColor: 'transparent' } : { backgroundColor: `${item.color}15` }]}>
                   <Ionicons name={item.icon as any} size={20} color={isActive ? '#FFFFFF' : item.color} />
                 </View>
-                <Text style={[styles.menuText, isActive && styles.menuTextActive]}>{item.title}</Text>
+                <Text style={[styles.menuText, { color: theme.text }, isActive && { color: '#FFFFFF' }]}>{item.title}</Text>
               </TouchableOpacity>
             )
           })}
         </ScrollView>
       </View>
 
-      <Animated.View style={[styles.mainAppContainer, { transform: [{ translateX: panX }] }]} {...panResponder.panHandlers}>
-        {!isDrawerOpen.current && (
-          <View style={styles.gestureIndicatorFixed}>
-            <View style={styles.gestureBar} />
-          </View>
-        )}
+      <Animated.View style={[styles.mainAppContainer, { backgroundColor: theme.bg, transform: [{ translateX: panX }] }]} {...panResponder.panHandlers}>
+        
+        <Animated.View style={[
+          styles.gestureIndicatorFixed,
+          {
+            opacity: panX.interpolate({ inputRange: [0, 50], outputRange: [1, 0], extrapolate: 'clamp' }),
+            transform: [{ translateX: pullAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 4] }) }]
+          }
+        ]}>
+            <TouchableOpacity 
+              activeOpacity={0.6}
+              onPress={openDrawer} 
+              style={styles.hitboxTipis}
+            >
+               <Ionicons name="chevron-forward" size={18} color={isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.2)'} />
+            </TouchableOpacity>
+        </Animated.View>
 
         {isDrawerOpen && (
           <TouchableWithoutFeedback onPress={closeDrawer}>
@@ -410,12 +441,12 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
           </TouchableWithoutFeedback>
         )}
 
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
           {title && (
-            <View style={styles.header}>
+            <View style={[styles.header, { backgroundColor: theme.bg }]}>
               <View style={styles.headerLeft} />
               <View style={styles.headerCenter}>
-                <Text style={styles.title}>{title}</Text>
+                <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
               </View>
               <View style={styles.headerRight} />
             </View>
@@ -424,78 +455,61 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
         </SafeAreaView>
       </Animated.View>
 
-      <NotificationInteractive
-        visible={banNotifyVisible}
-        title={banNotifyConfig.title}
-        message={banNotifyConfig.message}
-        type={getNotificationType()}
-        buttons={banNotifyConfig.buttons}
-        onDismiss={() => {}} 
-      />
+      <NotificationInteractive visible={banNotifyVisible} title={banNotifyConfig.title} message={banNotifyConfig.message} type={getNotificationType()} buttons={banNotifyConfig.buttons} onDismiss={() => {}} />
 
       <Modal visible={appealVisible} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Ajukan Banding</Text>
-            <Text style={styles.modalSubtitle}>Isi form ini untuk meminta peninjauan kembali akun Anda.</Text>
-            
-            <InputApp iconName="help-circle" iconColor="#8E8E93" placeholder="Alasan (Singkat)" value={appealReason} onChangeText={setAppealReason} />
-            <InputApp iconName="document-text" iconColor="#8E8E93" placeholder="Pesan Detail" value={appealText} onChangeText={setAppealText} />
-
+          <View style={[styles.modalContent, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>{t?.modal_appeal_title}</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.subText }]}>{t?.modal_appeal_sub}</Text>
+            <InputApp iconName="help-circle" iconColor="#8E8E93" placeholder={t?.input_reason || 'Reason'} value={appealReason} onChangeText={setAppealReason} />
+            <InputApp iconName="document-text" iconColor="#8E8E93" placeholder={t?.input_detail || 'Detail'} value={appealText} onChangeText={setAppealText} />
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalBtn, styles.btnCancel]} onPress={() => setAppealVisible(false)}>
-                <Text style={styles.btnTextCancel}>Batal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.btnSubmit]} onPress={handleAppealSubmit}>
-                <Text style={styles.btnTextSubmit}>Kirim Banding</Text>
+              {/* Tombol Batal Dihapus, Tersisa Kirim Banding Full Width */}
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: accentColor }]} onPress={handleAppealSubmit}>
+                <Text style={styles.btnTextSubmit}>{t?.btn_submit_appeal || 'Submit'}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' }, 
-  sidebarContainer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: DRAWER_WIDTH, backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingBottom: 30 },
-  profileCapsule: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F7', padding: 8, borderRadius: 999, marginBottom: 24 },
+  root: { flex: 1 }, 
+  sidebarContainer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: DRAWER_WIDTH, paddingHorizontal: 20, paddingBottom: 30 },
+  profileCapsule: { flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 999, marginBottom: 24 },
   profileTextContainer: { marginLeft: 12, flex: 1, paddingRight: 10 },
-  profileName: { fontSize: 16, fontWeight: '700', color: '#1C1C1E', letterSpacing: -0.3 },
-  hardwareCapsule: { backgroundColor: '#007AFF', padding: 16,borderRadius: 20, marginBottom: 24,},
+  profileName: { fontSize: 16, fontWeight: '700', letterSpacing: -0.3 },
+  hardwareCapsule: { padding: 16, borderRadius: 20, marginBottom: 24 },
   hardwareGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   hardwareItem: { flexDirection: 'row', alignItems: 'center', width: '45%', gap: 8 },
   hardwareTextWrapper: { flex: 1 },
-  hardwareText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', flexShrink: 1 }, 
+  hardwareText: { fontSize: 13, fontWeight: '700', flexShrink: 1 }, 
   hardwareSubText: { fontSize: 10, fontWeight: '700', marginTop: 2 },
   menuContainer: { flex: 1 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 999, marginBottom: 8 },
-  menuItemActive: { backgroundColor: '#007AFF', shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
   menuIconBox: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
-  menuText: { fontSize: 15, fontWeight: '600', color: '#1C1C1E', letterSpacing: -0.3 },
-  menuTextActive: { color: '#FFFFFF' },
-  mainAppContainer: { flex: 1, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: -10, height: 0 }, shadowOpacity: 0.05, shadowRadius: 20, elevation: 15 },
+  menuText: { fontSize: 15, fontWeight: '600', letterSpacing: -0.3 },
+  mainAppContainer: { flex: 1, shadowColor: '#000', shadowOffset: { width: -10, height: 0 }, shadowOpacity: 0.05, shadowRadius: 20, elevation: 15 },
   overlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: '#000', zIndex: 10 },
-  container: { flex: 1, backgroundColor: '#FAFAFC', zIndex: 1 },
-  gestureIndicatorFixed: { position: 'absolute', left: 0, top: '50%', marginTop: -25, height: 50, width: 6, justifyContent: 'center', alignItems: 'flex-start', zIndex: 9999 },
-  gestureBar: { height: '100%', width: 5, backgroundColor: '#C7C7CC', borderTopRightRadius: 4, borderBottomRightRadius: 4 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, backgroundColor: '#FAFAFC' },
+  container: { flex: 1, zIndex: 1 },
+  gestureIndicatorFixed: { position: 'absolute', left: 0, top: '50%', marginTop: -30, height: 60, width: 30, justifyContent: 'center', alignItems: 'flex-start', zIndex: 9999 },
+  hitboxTipis: { width: 30, height: 60, justifyContent: 'center', alignItems: 'flex-start', paddingLeft: 4, borderTopRightRadius: 8, borderBottomRightRadius: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
   headerLeft: { flex: 1 },
   headerRight: { flex: 1 },
   headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 18, fontWeight: '700', color: '#1C1C1E', letterSpacing: -0.5, textAlign: 'center' },
+  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.5, textAlign: 'center' },
   scroll: { padding: 24, flexGrow: 1 },
   content: { padding: 24, flex: 1 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFF', padding: 24, borderRadius: 20, elevation: 10 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 8, textAlign: 'center' },
-  modalSubtitle: { fontSize: 13, color: '#8E8E93', marginBottom: 20, textAlign: 'center' },
-  modalButtons: { flexDirection: 'row', marginTop: 16, justifyContent: 'space-between' },
+  modalContent: { padding: 24, borderRadius: 20, elevation: 10 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
+  modalSubtitle: { fontSize: 13, marginBottom: 20, textAlign: 'center' },
+  modalButtons: { flexDirection: 'row', marginTop: 16, justifyContent: 'center' }, // Diganti dari space-between jadi center
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 25, alignItems: 'center', marginHorizontal: 5 },
-  btnCancel: { backgroundColor: '#FFECEB' },
-  btnSubmit: { backgroundColor: '#007AFF' },
-  btnTextCancel: { color: '#FF3B30', fontWeight: 'bold' },
   btnTextSubmit: { color: '#FFF', fontWeight: 'bold' }
 });

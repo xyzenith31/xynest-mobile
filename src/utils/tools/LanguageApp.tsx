@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { languageDict, LANGUAGE_OPTIONS } from '../language/LanguageScreenAppLanguage';
 import { appearanceDict } from '../language/AppearanceScreenAppLanguage';
+import { settingDict } from '../language/SettingScreenAppLanguage';
+import { appLayoutDict } from '../language/AppLayoutLanguage';
 
 export type LangCode = 'id' | 'en' | 'zh' | 'ja' | 'th' | 'vi';
 
@@ -12,6 +14,8 @@ interface LanguageContextType {
   LANGUAGE_OPTIONS: typeof LANGUAGE_OPTIONS;
   t_language: any;
   t_appearance: any;
+  t_setting: any; 
+  t_appLayout: any;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -49,6 +53,8 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
   const t_language = languageDict[language] || languageDict['id'];
   const t_appearance = appearanceDict[language] || appearanceDict['id'];
+  const t_setting = settingDict[language] || settingDict['id']; 
+  const t_appLayout = appLayoutDict[language] || appLayoutDict['id']; 
 
   if (loading) return null;
 
@@ -60,6 +66,8 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
       LANGUAGE_OPTIONS,
       t_language,
       t_appearance,
+      t_setting,
+      t_appLayout,
     }}>
       {children}
     </LanguageContext.Provider>

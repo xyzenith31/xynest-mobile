@@ -1,4 +1,5 @@
 // src/app/screens/settings/SettingScreenApp.tsx
+
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { StyleSheet, Text, View, Animated, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -9,33 +10,47 @@ import AppLayout from '../../layouts/AppLayout';
 import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 import NotificationInteractiveApp, { NotificationButton } from '@/components/ui/NotificationInteractiveApp';
 import { Avatar } from '@/components/ux/Avatar';
+import { useAppearance } from '@/utils/tools/AppearanceApp'; 
+import { useLanguage } from '@/utils/tools/LanguageApp';     
 
 interface SettingItemProps {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconColor?: string;
+  textColor: string;      
+  dividerColor: string;   
+  isDarkMode: boolean;
   onPress?: () => void;
   isDestructive?: boolean;
   hideDivider?: boolean;
 }
 
-const SettingItem = memo(({ title, icon, iconColor = '#007AFF', onPress, isDestructive = false, hideDivider = false }: SettingItemProps) => {
+const SettingItem = memo(({ title, icon, iconColor = '#007AFF', textColor, dividerColor, isDarkMode, onPress, isDestructive = false, hideDivider = false }: SettingItemProps) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => { 
     Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 20 }),
-      Animated.timing(opacityAnim, { toValue: 0.7, duration: 100, useNativeDriver: true })
+      Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true, speed: 30 }),
+      Animated.timing(opacityAnim, { toValue: 0.8, duration: 80, useNativeDriver: true })
     ]).start();
   };
 
   const handlePressOut = () => {
     Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }),
-      Animated.timing(opacityAnim, { toValue: 1, duration: 150, useNativeDriver: true })
+      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 30 }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 100, useNativeDriver: true })
     ]).start();
   };
+
+  // PERBAIKAN BUG: Menggunakan kombinasi warna alpha rgba transparan agar adaptif di Dark Mode
+  const bgIconCalculated = isDestructive 
+    ? (isDarkMode ? 'rgba(255, 69, 58, 0.15)' : '#FFEBEA') 
+    : `${iconColor}15`;
+
+  const colorIconCalculated = isDestructive 
+    ? (isDarkMode ? '#FF453A' : '#FF3B30') 
+    : iconColor;
 
   return (
     <Pressable
@@ -48,14 +63,14 @@ const SettingItem = memo(({ title, icon, iconColor = '#007AFF', onPress, isDestr
         { transform: [{ scale: scaleAnim }], opacity: opacityAnim }
       ]}>
         <View style={styles.settingItemLeft}>
-          <View style={[styles.iconBox, { backgroundColor: isDestructive ? '#FFEBEA' : `${iconColor}15` }]}>
-            <Ionicons name={icon} size={20} color={isDestructive ? '#FF3B30' : iconColor} />
+          <View style={[styles.iconBox, { backgroundColor: bgIconCalculated }]}>
+            <Ionicons name={icon} size={20} color={colorIconCalculated} />
           </View>
-          <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.settingText, isDestructive && styles.destructiveText]}>{title}</Text>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.settingText, { color: textColor }, isDestructive && { color: colorIconCalculated, fontWeight: '600' }]}>{title}</Text>
         </View>
         {!isDestructive && <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />}
       </Animated.View>
-      {!hideDivider && <View style={styles.divider} />}
+      {!hideDivider && <View style={[styles.divider, { backgroundColor: dividerColor }]} />}
     </Pressable>
   );
 });
@@ -67,6 +82,9 @@ export default function SettingScreenApp() {
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
   const [showSuccessLogout, setShowSuccessLogout] = useState(false);
 
+  const { theme, isDarkMode } = useAppearance();
+  const { t_setting: t } = useLanguage();
+
   useEffect(() => {
     const fetchUser = async () => {
       const data = await authDb.getUserData();
@@ -77,9 +95,9 @@ export default function SettingScreenApp() {
 
   const executeLogout = useCallback(() => {
     setShowConfirmLogout(false);
+    setLoading(true);
     
     setTimeout(async () => {
-      setLoading(true);
       try {
         await UserService.logout();
       } catch (err) {
@@ -87,83 +105,77 @@ export default function SettingScreenApp() {
       } finally {
         await authDb.clearSession();
         setLoading(false);
-        setTimeout(() => setShowSuccessLogout(true), 300);
+        setTimeout(() => setShowSuccessLogout(true), 150);
       }
-    }, 300);
+    }, 400);
   }, []);
 
   const finishLogout = useCallback(() => {
     setShowSuccessLogout(false);
     setTimeout(() => {
       router.replace('/screens/auth/LoginScreenApp');
-    }, 300);
+    }, 200);
   }, [router]);
 
   const confirmButtons: NotificationButton[] = [
-    { text: "Batal", style: "cancel", onPress: () => setShowConfirmLogout(false) },
-    { text: "Oke", style: "danger", onPress: executeLogout }
+    { text: t.btn_cancel, style: "cancel", onPress: () => setShowConfirmLogout(false) },
+    { text: t.btn_ok, style: "danger", onPress: executeLogout }
   ];
 
   const successButtons: NotificationButton[] = [
-    { text: "Oke", style: "default", onPress: finishLogout }
+    { text: t.btn_ok, style: "default", onPress: finishLogout }
   ];
 
   return (
-    <AppLayout title="Pengaturan" scrollable={false}>
+    <AppLayout title={t.title} scrollable={false}>
       <ScrollView 
         showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.bg }]}
       >
         <View style={styles.profileSection}>
           <Avatar 
             url={userData?.profiles} 
-            name={userData?.full_name || 'Pengguna'} 
+            name={userData?.full_name || t.fallback_name} 
             size={96} 
           />
-          <Text style={styles.fullNameText}>{userData?.full_name || 'Nama Lengkap'}</Text>
-          <Text style={styles.usernameText}>{userData?.username || 'username'}</Text>
+          <Text style={[styles.fullNameText, { color: theme.text }]}>{userData?.full_name || t.fallback_fullname}</Text>
+          <Text style={[styles.usernameText, { color: theme.subText }]}>{userData?.username || 'username'}</Text>
         </View>
 
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Akun & Keamanan</Text>
-          <SettingItem title="Account / Profil" icon="person-outline" iconColor="#007AFF" onPress={() => router.push('/screens/settings/AccountScreenApp')} />
-          <SettingItem title="Privacy" icon="lock-closed-outline" iconColor="#34C759" />
-          <SettingItem title="Device Management" icon="hardware-chip-outline" iconColor="#8E8E93" onPress={() => router.push('/screens/settings/DeviceManagerScreenApp')} hideDivider />
+        {/* SECTION AKUN & KEAMANAN */}
+        <Text style={[styles.sectionTitle, { color: theme.subText }]}>{t.sec_account}</Text>
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <SettingItem title={t.item_account} icon="person-outline" iconColor="#007AFF" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/AccountScreenApp')} />
+          <SettingItem title={t.item_privacy} icon="lock-closed-outline" iconColor="#34C759" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} />
+          <SettingItem title={t.item_device} icon="hardware-chip-outline" iconColor="#8E8E93" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/DeviceManagerScreenApp')} hideDivider />
         </View>
 
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Preferensi</Text>
+        {/* SECTION PREFERENSI */}
+        <Text style={[styles.sectionTitle, { color: theme.subText }]}>{t.sec_pref}</Text>
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <SettingItem title={t.item_appearance} icon="color-palette-outline" iconColor="#AF52DE" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/AppearanceScreenApp')} />
+          <SettingItem title={t.item_notif} icon="notifications-outline" iconColor="#FF9500" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} />
+          <SettingItem title={t.item_storage} icon="server-outline" iconColor="#5856D6" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} />
+          <SettingItem title={t.item_lang} icon="language-outline" iconColor="#32ADE6" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/LanguageScreenApp')} hideDivider />
+        </View>
+
+        {/* SECTION LAINNYA */}
+        <Text style={[styles.sectionTitle, { color: theme.subText }]}>{t.sec_other}</Text>
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <SettingItem title={t.item_access} icon="accessibility-outline" iconColor="#00C7BE" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} />
+          <SettingItem title={t.item_donate} icon="heart-outline" iconColor="#FF2D55" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/DonationScreenApp')} hideDivider />
+        </View>
+
+        {/* LOGOUT BUTTON CARD */}
+        <View style={[styles.sectionCard, styles.logoutCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <SettingItem 
-            title="Appearance" 
-            icon="color-palette-outline" 
-            iconColor="#AF52DE" 
-            onPress={() => router.push('/screens/settings/AppearanceScreenApp')} 
-          />
-          <SettingItem title="Notification" icon="notifications-outline" iconColor="#FF9500" />
-          <SettingItem title="Storage & Data" icon="server-outline" iconColor="#5856D6" />
-          
-          {/* ROUTING LANGUAGE DITAMBAHKAN DI SINI BRO 👇 */}
-          <SettingItem 
-            title="Language" 
-            icon="language-outline" 
-            iconColor="#32ADE6" 
-            onPress={() => router.push('/screens/settings/LanguageScreenApp')}
-            hideDivider 
-          />
-        </View>
-
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Lainnya</Text>
-          <SettingItem title="Accessibility" icon="accessibility-outline" iconColor="#00C7BE" />
-          <SettingItem title="Donation" icon="heart-outline" iconColor="#FF2D55" onPress={() => router.push('/screens/settings/DonationScreenApp')} hideDivider />
-        </View>
-
-        <View style={styles.logoutContainer}>
-          <SettingItem 
-            title="Keluar Sesi (Logout)" 
+            title={t.item_logout} 
             icon="log-out-outline" 
+            textColor={theme.text}
+            dividerColor={theme.border}
             isDestructive={true} 
             hideDivider={true}
+            isDarkMode={isDarkMode}
             onPress={() => setShowConfirmLogout(true)} 
           />
         </View>
@@ -173,8 +185,8 @@ export default function SettingScreenApp() {
 
       <NotificationInteractiveApp
         visible={showConfirmLogout}
-        title="Konfirmasi Logout"
-        message="Apakah Anda yakin ingin keluar dari akun Anda? Anda harus login kembali untuk masuk."
+        title={t.logout_confirm_title}
+        message={t.logout_confirm_msg}
         type="warning"
         buttons={confirmButtons}
         onDismiss={() => setShowConfirmLogout(false)}
@@ -182,8 +194,8 @@ export default function SettingScreenApp() {
 
       <NotificationInteractiveApp
         visible={showSuccessLogout}
-        title="Berhasil Logout"
-        message="Anda telah berhasil keluar dari sistem dengan aman."
+        title={t.logout_success_title}
+        message={t.logout_success_msg}
         type="success"
         buttons={successButtons}
       />
@@ -192,17 +204,16 @@ export default function SettingScreenApp() {
 }
 
 const styles = StyleSheet.create({
-  scrollContent:{paddingTop:20, paddingBottom:40,backgroundColor:'#FAFAFC'}, // Tambah paddingTop 20 biar gak mepet
-  profileSection:{alignItems:'center',marginTop:10,marginBottom:36}, // margin top dikurangi karena udah ada paddingTop di atas
-  fullNameText:{fontSize:22,fontWeight:'700',color:'#1C1C1E',marginTop:16,letterSpacing:-0.5},
-  usernameText:{fontSize:15,color:'#8E8E93',marginTop:4},
-  sectionContainer:{marginBottom:24,paddingHorizontal:16},
-  sectionTitle:{fontSize:13,fontWeight:'600',color:'#8E8E93',textTransform:'uppercase',letterSpacing:0.5,marginBottom:8,marginLeft:4},
-  settingItem:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:14,paddingHorizontal:8},
+  scrollContent:{paddingTop:12, paddingBottom:40, paddingHorizontal:16}, 
+  profileSection:{alignItems:'center',marginTop:10,marginBottom:28}, 
+  fullNameText:{fontSize:22,fontWeight:'700',marginTop:16,letterSpacing:-0.5},
+  usernameText:{fontSize:15,marginTop:4},
+  sectionTitle:{fontSize:11,fontWeight:'700',textTransform:'uppercase',letterSpacing:0.8,marginBottom:10,marginLeft:8,marginTop:12},
+  sectionCard:{borderRadius:20,borderWidth:1,overflow:'hidden',marginBottom:16,paddingHorizontal:4},
+  logoutCard:{marginTop:12,marginBottom:0},
+  settingItem:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:14,paddingHorizontal:12},
   settingItemLeft:{flexDirection:'row',alignItems:'center',flex:1},
-  iconBox:{width:38,height:38,borderRadius:12,justifyContent:'center',alignItems:'center',marginRight:16},
-  settingText:{fontSize:16,color:'#1C1C1E',fontWeight:'500',flex:1,flexShrink:1,marginRight:8},
-  destructiveText:{color:'#FF3B30',fontWeight:'600'},
-  divider:{height:StyleSheet.hairlineWidth,backgroundColor:'#E5E5EA',marginLeft:62},
-  logoutContainer:{marginTop:10,paddingHorizontal:16}
+  iconBox:{width:36,height:36,borderRadius:10,justifyContent:'center',alignItems:'center',marginRight:14},
+  settingText:{fontSize:15,fontWeight:'500',flex:1,flexShrink:1,marginRight:8},
+  divider:{height:StyleSheet.hairlineWidth,marginLeft:62}
 });

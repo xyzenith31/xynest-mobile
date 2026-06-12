@@ -9,7 +9,10 @@ import { AppearanceProvider } from '../utils/tools/AppearanceApp';
 import { LanguageProvider } from '../utils/tools/LanguageApp';
 
 SplashScreen.preventAutoHideAsync();
-LogBox.ignoreLogs(['setLayoutAnimationEnabledExperimental is currently a no-op']);
+LogBox.ignoreLogs([
+  /setLayoutAnimationEnabledExperimental/,
+  /ViewPropTypes will be removed/,
+]);
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -26,26 +29,11 @@ export default function RootLayout() {
                 contentStyle: { backgroundColor: themeBackgroundColor }
               }}
             >
-              <Stack.Screen 
-                name="index" 
-                options={{ animation: 'none' }} 
-              />
-              <Stack.Screen 
-                name="screens/auth/LoginScreenApp" 
-                options={{ animation: 'fade' }} 
-              />
-              <Stack.Screen 
-                name="screens/auth/RegisterScreenApp" 
-                options={{ presentation: 'transparentModal', animation: 'none' }} 
-              />
-              <Stack.Screen 
-                name="screens/auth/VerificationScreenApp" 
-                options={{ animation: 'fade' }} 
-              />
-              <Stack.Screen 
-                name="screens/other/HomeScreenApp" 
-                options={{ animation: 'fade' }} 
-              />
+              <Stack.Screen name="index" options={{ animation: 'none' }} />
+              <Stack.Screen name="screens/auth/LoginScreenApp" options={{ animation: 'fade' }} />
+              <Stack.Screen name="screens/auth/RegisterScreenApp" options={{ presentation: 'transparentModal', animation: 'none' }} />
+              <Stack.Screen name="screens/auth/VerificationScreenApp" options={{ animation: 'fade' }} />
+              <Stack.Screen name="screens/other/HomeScreenApp" options={{ animation: 'fade' }} />
             </Stack>
           </ThemeProvider>
         </LanguageProvider>

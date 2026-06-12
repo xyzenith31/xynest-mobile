@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Modal, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppearance } from '@/utils/tools/AppearanceApp';
 
 interface LoadingSpinnerProps {
   visible: boolean;
@@ -8,6 +9,7 @@ interface LoadingSpinnerProps {
 }
 
 export default function LoadingSpinnerApp({ visible }: LoadingSpinnerProps) {
+  const { accentColor, isDarkMode } = useAppearance();
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -46,9 +48,20 @@ export default function LoadingSpinnerApp({ visible }: LoadingSpinnerProps) {
 
   return (
     <Modal transparent visible={visible} animationType="none" statusBarTranslucent>
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.spinnerWrapper, { opacity: fadeAnim, transform: [{ rotate: rotation }] }]}>
-          <Ionicons name="aperture" size={54} color="#007AFF" />
+      <View style={[
+        styles.overlay, 
+        { backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 255, 255, 0.65)' }
+      ]}>
+        <Animated.View style={[{ opacity: fadeAnim }]}>
+          <Animated.View style={[
+            styles.spinnerWrapper, 
+            { 
+              transform: [{ rotate: rotation }],
+              shadowColor: accentColor 
+            }
+          ]}>
+            <Ionicons name="aperture" size={60} color={accentColor} />
+          </Animated.View>
         </Animated.View>
       </View>
     </Modal>
@@ -56,6 +69,6 @@ export default function LoadingSpinnerApp({ visible }: LoadingSpinnerProps) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.15)', justifyContent: 'center', alignItems: 'center', zIndex: 9999, },
-  spinnerWrapper: { justifyContent: 'center', alignItems: 'center', shadowColor: '#007AFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 15, elevation: 10, }
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', zIndex: 9999, },
+  spinnerWrapper: { justifyContent: 'center', alignItems: 'center', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 15, elevation: 15, }
 });
