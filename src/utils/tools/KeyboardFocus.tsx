@@ -1,26 +1,37 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { 
+  KeyboardAvoidingView, 
+  Platform, 
+  StyleSheet, 
+  TouchableWithoutFeedback, 
+  Keyboard,
+  View,
+  Dimensions
+} from 'react-native';
+
+const { width, height } = Dimensions.get('window');
 
 interface KeyboardFocusProps {
   children: React.ReactNode;
-  offset?: number;
-  style?: StyleProp<ViewStyle>;
+  style?: any;
 }
 
-export default function KeyboardFocus({ children, offset = 10, style }: KeyboardFocusProps) {
+export default function KeyboardFocus({ children, style }: KeyboardFocusProps) {
   return (
     <KeyboardAvoidingView
-      style={[styles.container, style]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? offset : 20}
+      style={[styles.fullscreen, style]}
     >
-      {children}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.innerContent}>
+          {children}
+        </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  fullscreen: { flex: 1,width: width, height: height, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 ,},
+  innerContent: { flex: 1, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', },
 });

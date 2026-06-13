@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Modal, Platform, Pressable, Dimensions } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { UserService } from '../../../services/UserService';
 import { authDb } from '../../../databases/AuthDatabase';
-import AppLayout from '../../layouts/AppLayout';
 import { Avatar } from '../../../components/ux/Avatar';
+import LoadingSpinnerApp from '../../../components/ui/LoadingSpinnerApp';
+import NotificationInteractive, { NotificationType } from '../../../components/ui/NotificationInteractiveApp';
+import { useAppearance } from '../../../utils/tools/AppearanceApp';
+import { useLanguage } from '../../../utils/tools/LanguageApp';
+import KeyboardFocus from '../../../utils/tools/KeyboardFocus';
+
+const { width, height } = Dimensions.get('window');
 
 export default function AccountScreenApp() {
+  const router = useRouter();
+  const { theme, accentColor, isDarkMode } = useAppearance();
+  const { t_account: dict } = useLanguage(); 
   const [loading, setLoading] = useState(false);
   const [activeEditField, setActiveEditField] = useState<string | null>(null);
   const [emailStep, setEmailStep] = useState<number>(0);
@@ -17,9 +29,21 @@ export default function AccountScreenApp() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [inputValue, setInputValue] = useState('');
+  const [notifVisible, setNotifVisible] = useState(false);
   const [userData, setUserData] = useState({
     full_name: '', username: '', phone_number: '', email: '', gender: '', birth_date: '', profileUrl: null as string | null
   });
+  const [notifConfig, setNotifConfig] = useState<{
+    title: string;
+    message: string;
+    type: NotificationType;
+    onOk?: () => void;
+  }>({ title: '', message: '', type: 'info' });
+
+  const showNotif = (title: string, message: string, type: NotificationType = 'info', onOk?: () => void) => {
+    setNotifConfig({ title, message, type, onOk });
+    setNotifVisible(true);
+  };
 
   useEffect(() => { loadProfileData(); }, []);
 
@@ -50,24 +74,36 @@ export default function AccountScreenApp() {
       setLoading(false);
       if (res.success) {
         setUserData({ ...userData, profileUrl: res.profiles });
-        Alert.alert('Sukses', 'Foto profil berhasil diperbarui.');
+        showNotif(dict.success, dict.profilePicUpdated, 'success');
       } else {
-        Alert.alert('Gagal', res.error || 'Terjadi kesalahan.');
+        showNotif(dict.failed, res.error || dict.uploadError, 'error');
       }
     }
   };
 
+  const handleDeleteImage = async () => {
+    setLoading(true);
+    const res = await UserService.updateProfile({ profile_base64: '' });
+    setLoading(false);
+    if (res.success) {
+      setUserData({ ...userData, profileUrl: null });
+      showNotif(dict.success, dict.profilePicDeleted, 'success');
+    } else {
+      showNotif(dict.failed, res.error || dict.deleteError, 'error');
+    }
+  };
+
   const handleUpdateGeneral = async (field: string) => {
-    if (!inputValue.trim()) return Alert.alert('Error', 'Input tidak boleh kosong.');
+    if (!inputValue.trim()) return showNotif(dict.warning, dict.inputEmpty, 'warning');
     setLoading(true);
     const res = await UserService.updateProfile({ [field]: inputValue });
     setLoading(false);
     if (res.success) {
-      Alert.alert('Sukses', `Data berhasil diperbarui.`);
       setUserData({ ...userData, [field]: inputValue });
       setActiveEditField(null);
+      showNotif(dict.success, dict.dataUpdated, 'success');
     } else {
-      Alert.alert('Gagal', res.error || 'Terjadi kesalahan.');
+      showNotif(dict.failed, res.error || dict.errorOccurred, 'error');
     }
   };
 
@@ -76,34 +112,37 @@ export default function AccountScreenApp() {
     const res = await UserService.requestOldEmailOtp();
     setLoading(false);
     if (res.success) {
-      setEmailStep(1);
-      setOtpOldEmail(''); setNewEmail(''); setOtpNewEmail('');
-      setActiveEditField('email');
-    } else { Alert.alert('Gagal', res.error); }
+      showNotif(dict.codeSent, dict.otpOldEmailSent, 'info', () => {
+        setEmailStep(1);
+        setOtpOldEmail(''); setNewEmail(''); setOtpNewEmail('');
+        setActiveEditField('email');
+      });
+    } else { showNotif(dict.failed, res.error, 'error'); }
   };
 
   const handleRequestNewEmailOtp = async () => {
-    if (!newEmail.trim()) return Alert.alert('Error', 'Masukkan email baru Anda.');
+    if (!newEmail.trim()) return showNotif(dict.warning, dict.enterNewEmail, 'warning');
     setLoading(true);
     const res = await UserService.verifyOldAndRequestNewEmail(otpOldEmail, newEmail);
     setLoading(false);
     if (res.success) {
-      setEmailStep(3);
-      Alert.alert('Sukses', 'OTP telah dikirim ke email baru Anda.');
-    } else { Alert.alert('Gagal', res.error); }
+      showNotif(dict.codeSent, dict.otpNewEmailSent, 'success', () => {
+        setEmailStep(3);
+      });
+    } else { showNotif(dict.failed, res.error, 'error'); }
   };
 
   const handleVerifyNewEmail = async () => {
-    if (!otpNewEmail.trim()) return Alert.alert('Error', 'Masukkan OTP email baru.');
+    if (!otpNewEmail.trim()) return showNotif(dict.warning, dict.enterNewOtp, 'warning');
     setLoading(true);
     const res = await UserService.verifyNewEmailOtp(otpNewEmail);
     setLoading(false);
     if (res.success) {
-      Alert.alert('Sukses', 'Email Anda berhasil diperbarui.');
       setUserData({ ...userData, email: newEmail });
       setActiveEditField(null);
       setEmailStep(0);
-    } else { Alert.alert('Gagal', res.error); }
+      showNotif(dict.success, dict.emailUpdated, 'success');
+    } else { showNotif(dict.failed, res.error, 'error'); }
   };
 
   const handleRequestPassword = async () => {
@@ -111,154 +150,262 @@ export default function AccountScreenApp() {
     const res = await UserService.requestPasswordChange();
     setLoading(false);
     if (res.success) {
-      Alert.alert('Sukses', 'OTP untuk ganti password telah dikirim ke email Anda.');
-      setActiveEditField('password');
-      setOtpPassword(''); setNewPassword(''); setConfirmPassword('');
-    } else { Alert.alert('Gagal', res.error); }
+      showNotif(dict.codeSent, dict.otpPasswordSent, 'info', () => {
+        setActiveEditField('password');
+        setOtpPassword(''); setNewPassword(''); setConfirmPassword('');
+      });
+    } else { showNotif(dict.failed, res.error, 'error'); }
   };
 
   const handleVerifyPassword = async () => {
-    if (newPassword !== confirmPassword) return Alert.alert('Error', 'Konfirmasi password tidak cocok.');
+    if (newPassword !== confirmPassword) return showNotif(dict.warning, dict.passwordMismatch, 'warning');
+    if (!otpPassword || !newPassword) return showNotif(dict.warning, dict.fillAllFields, 'warning');
+    
     setLoading(true);
     const res = await UserService.verifyPasswordChange(otpPassword, newPassword);
     setLoading(false);
     if (res.success) {
-      Alert.alert('Sukses', 'Password berhasil diperbarui.');
       setActiveEditField(null);
-    } else { Alert.alert('Gagal', res.error); }
+      showNotif(dict.success, dict.passwordUpdated, 'success');
+    } else { showNotif(dict.failed, res.error, 'error'); }
+  };
+
+  const getIconForField = (fieldKey: string) => {
+    switch (fieldKey) {
+      case 'full_name': return 'person-outline';
+      case 'username': return 'at-circle-outline';
+      case 'gender': return 'male-female-outline';
+      case 'birth_date': return 'calendar-outline';
+      case 'phone_number': return 'call-outline';
+      case 'email': return 'mail-outline';
+      default: return 'create-outline';
+    }
   };
 
   const renderField = (label: string, value: string, fieldKey: string) => (
-    <View style={styles.fieldContainer}>
-      <View>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.value}>{value || '-'}</Text>
-      </View>
-      <TouchableOpacity onPress={() => {
+    <TouchableOpacity 
+      style={[styles.fieldCard, { backgroundColor: theme.surface }]} 
+      activeOpacity={0.7}
+      onPress={() => {
         if (fieldKey === 'email') {
           handleStartEmailChange();
         } else {
           setInputValue(value);
           setActiveEditField(fieldKey);
         }
-      }}>
-        {loading && fieldKey === 'email' ? <ActivityIndicator size="small" color="#007AFF" /> : <Text style={styles.editBtnText}>Ubah</Text>}
-      </TouchableOpacity>
-    </View>
+      }}
+    >
+      <View style={[styles.fieldIconContainer, { backgroundColor: isDarkMode ? '#2C2C2E' : '#F4F4F8' }]}>
+        <Ionicons name={getIconForField(fieldKey) as any} size={20} color={accentColor} />
+      </View>
+      <View style={styles.fieldTextContainer}>
+        <Text style={[styles.label, { color: '#8E8E93' }]}>{label}</Text>
+        <Text style={[styles.value, { color: theme.text }]} numberOfLines={1}>{value || '-'}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={isDarkMode ? '#636366' : '#C7C7CC'} />
+    </TouchableOpacity>
   );
 
   return (
-    <AppLayout title="Akun Saya">
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.5 : 1 }]}>
+          <Ionicons name="arrow-back" size={24} color={accentColor} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{dict.myAccount}</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.avatarSection}>
-          <Avatar url={userData.profileUrl} name={userData.full_name || userData.username} size={100} />
-          <TouchableOpacity style={styles.changePhotoBtn} onPress={handlePickImage} disabled={loading}>
-            {loading && !activeEditField ? <ActivityIndicator color="#007AFF" /> : <Text style={styles.changePhotoText}>Ubah Foto Profil</Text>}
-          </TouchableOpacity>
+          <View style={[styles.avatarWrapper, { backgroundColor: theme.surface }]}>
+            <Avatar url={userData.profileUrl} name={userData.full_name || userData.username} size={100} />
+          </View>
+          <View style={styles.avatarActionRow}>
+            <TouchableOpacity style={[styles.iconButton, { backgroundColor: isDarkMode ? '#233924' : '#E8F5E9' }]} onPress={handlePickImage} disabled={loading}>
+              <Ionicons name="camera" size={20} color="#4CAF50" />
+            </TouchableOpacity>
+            {userData.profileUrl && (
+              <TouchableOpacity style={[styles.iconButton, { backgroundColor: isDarkMode ? '#3D2424' : '#FFEBEE' }]} onPress={handleDeleteImage} disabled={loading}>
+                <Ionicons name="trash" size={20} color="#F44336" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {activeEditField ? (
-          <View style={styles.editorCard}>
-            {activeEditField === 'email' ? (
-              emailStep === 1 ? (
+        <View style={styles.listContainer}>
+          {renderField(dict.fullName, userData.full_name, 'full_name')}
+          {renderField(dict.username, userData.username, 'username')}
+          {renderField(dict.gender, userData.gender, 'gender')}
+          {renderField(dict.birthDate, userData.birth_date, 'birth_date')}
+          {renderField(dict.phone, userData.phone_number, 'phone_number')}
+          {renderField(dict.email, userData.email, 'email')}
+          
+          <TouchableOpacity 
+             style={[styles.fieldCard, { backgroundColor: theme.surface, marginTop: 10 }]} 
+             activeOpacity={0.7} 
+             onPress={handleRequestPassword}
+          >
+            <View style={[styles.fieldIconContainer, { backgroundColor: isDarkMode ? '#2C2C2E' : '#F4F4F8' }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={accentColor} />
+            </View>
+            <View style={styles.fieldTextContainer}>
+              <Text style={[styles.label, { color: '#8E8E93' }]}>{dict.security}</Text>
+              <Text style={[styles.value, { color: theme.text }]}>{dict.changePassword}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={isDarkMode ? '#636366' : '#C7C7CC'} />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      <Modal visible={!!activeEditField} transparent animationType="fade" statusBarTranslucent={true} onRequestClose={() => { setActiveEditField(null); setEmailStep(0); }}>
+        <KeyboardFocus style={styles.modalOverlay}>
+          <View style={[styles.floatingCard, { backgroundColor: theme.surface }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+              <TouchableOpacity onPress={() => { setActiveEditField(null); setEmailStep(0); }} style={styles.closeModalBtn}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {activeEditField === 'email' ? dict.changeEmail : 
+                 activeEditField === 'password' ? dict.changePassword : 
+                 `${dict.change} ${activeEditField?.replace('_', ' ')}`}
+              </Text>
+              <View style={{ width: 40 }} />
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {activeEditField === 'email' ? (
+                emailStep === 1 ? (
+                  <>
+                    <View style={[styles.infoBox, { backgroundColor: isDarkMode ? '#1C2C3A' : '#F0F8FF' }]}>
+                      <Ionicons name="information-circle-outline" size={20} color={accentColor} style={{ marginRight: 8 }}/>
+                      <Text style={[styles.infoText, { color: accentColor }]}>{dict.otpAutoOldEmail}</Text>
+                    </View>
+                    <TextInput 
+                       style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bg, color: theme.text }]} 
+                       value={otpOldEmail} onChangeText={setOtpOldEmail} placeholder={dict.otpOldEmailPlaceholder} placeholderTextColor="#8E8E93" keyboardType="numeric" maxLength={6} 
+                    />
+                    <TouchableOpacity style={[styles.saveBtn, { backgroundColor: accentColor }]} onPress={() => {
+                      if (!otpOldEmail) return showNotif(dict.warning, dict.otpEmptyWarning, 'warning');
+                      setEmailStep(2);
+                    }}>
+                      <Text style={styles.saveBtnText}>{dict.next}</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : emailStep === 2 ? (
+                  <>
+                    <View style={[styles.infoBox, { backgroundColor: isDarkMode ? '#1C2C3A' : '#F0F8FF' }]}>
+                      <Ionicons name="mail-unread-outline" size={20} color={accentColor} style={{ marginRight: 8 }}/>
+                      <Text style={[styles.infoText, { color: accentColor }]}>{dict.ensureActiveEmail}</Text>
+                    </View>
+                    <TextInput 
+                       style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bg, color: theme.text }]} 
+                       value={newEmail} onChangeText={setNewEmail} placeholder={dict.newEmailPlaceholder} placeholderTextColor="#8E8E93" keyboardType="email-address" autoCapitalize="none" 
+                    />
+                    <TouchableOpacity style={[styles.saveBtn, { backgroundColor: accentColor }]} onPress={handleRequestNewEmailOtp}>
+                      <Text style={styles.saveBtnText}>{dict.sendOtpNewEmail}</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <View style={[styles.infoBox, { backgroundColor: isDarkMode ? '#1C2C3A' : '#F0F8FF' }]}>
+                      <Ionicons name="checkmark-done-circle-outline" size={20} color={accentColor} style={{ marginRight: 8 }}/>
+                      <Text style={[styles.infoText, { color: accentColor }]}>{dict.otpSentTo}{newEmail}</Text>
+                    </View>
+                    <TextInput 
+                       style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bg, color: theme.text }]} 
+                       value={otpNewEmail} onChangeText={setOtpNewEmail} placeholder={dict.otpNewEmailPlaceholder} placeholderTextColor="#8E8E93" keyboardType="numeric" maxLength={6} 
+                    />
+                    <TouchableOpacity style={[styles.saveBtn, { backgroundColor: accentColor }]} onPress={handleVerifyNewEmail}>
+                      <Text style={styles.saveBtnText}>{dict.saveNewEmail}</Text>
+                    </TouchableOpacity>
+                  </>
+                )
+              ) : activeEditField === 'password' ? (
                 <>
-                  <Text style={styles.editorTitle}>Verifikasi Keamanan</Text>
-                  <Text style={styles.descriptionText}>Kode OTP telah otomatis dikirim ke email lama Anda.</Text>
-                  <TextInput style={styles.input} value={otpOldEmail} onChangeText={setOtpOldEmail} placeholder="Masukkan 6-Digit OTP Lama" keyboardType="numeric" />
-                  <TouchableOpacity style={styles.saveBtn} onPress={() => {
-                    if (!otpOldEmail) return Alert.alert('Error', 'OTP tidak boleh kosong');
-                    setEmailStep(2);
-                  }}>
-                    <Text style={styles.saveBtnText}>Lanjut</Text>
-                  </TouchableOpacity>
-                </>
-              ) : emailStep === 2 ? (
-                <>
-                  <Text style={styles.editorTitle}>Masukkan Email Baru</Text>
-                  <Text style={styles.descriptionText}>Pastikan alamat email baru aktif dan bisa diakses.</Text>
-                  <TextInput style={styles.input} value={newEmail} onChangeText={setNewEmail} placeholder="Email Baru" keyboardType="email-address" autoCapitalize="none" />
-                  <TouchableOpacity style={styles.saveBtn} onPress={handleRequestNewEmailOtp}>
-                    {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Kirim OTP ke Email Baru</Text>}
+                  <View style={[styles.infoBox, { backgroundColor: isDarkMode ? '#1C2C3A' : '#F0F8FF' }]}>
+                    <Ionicons name="key-outline" size={20} color={accentColor} style={{ marginRight: 8 }}/>
+                    <Text style={[styles.infoText, { color: accentColor }]}>{dict.enterOtpAndNewPassword}</Text>
+                  </View>
+                  <TextInput 
+                     style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bg, color: theme.text }]} 
+                     value={otpPassword} onChangeText={setOtpPassword} placeholder={dict.otpFromEmail} placeholderTextColor="#8E8E93" keyboardType="numeric" maxLength={6} 
+                  />
+                  <TextInput 
+                     style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bg, color: theme.text }]} 
+                     value={newPassword} onChangeText={setNewPassword} placeholder={dict.newPassword} placeholderTextColor="#8E8E93" secureTextEntry 
+                  />
+                  <TextInput 
+                     style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bg, color: theme.text }]} 
+                     value={confirmPassword} onChangeText={setConfirmPassword} placeholder={dict.confirmNewPassword} placeholderTextColor="#8E8E93" secureTextEntry 
+                  />
+                  <TouchableOpacity style={[styles.saveBtn, { backgroundColor: accentColor }]} onPress={handleVerifyPassword}>
+                    <Text style={styles.saveBtnText}>{dict.savePassword}</Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <Text style={styles.editorTitle}>Verifikasi Email Baru</Text>
-                  <Text style={styles.descriptionText}>Kode OTP telah dikirim ke {newEmail}</Text>
-                  <TextInput style={styles.input} value={otpNewEmail} onChangeText={setOtpNewEmail} placeholder="Masukkan 6-Digit OTP Baru" keyboardType="numeric" />
-                  <TouchableOpacity style={styles.saveBtn} onPress={handleVerifyNewEmail}>
-                    {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Simpan Email</Text>}
+                  <TextInput 
+                    style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bg, color: theme.text }]} 
+                    value={inputValue} onChangeText={setInputValue} 
+                    placeholder={activeEditField === 'gender' ? dict.maleFemale : activeEditField === 'birth_date' ? dict.dateFormat : dict.enterNewData} 
+                    placeholderTextColor="#8E8E93"
+                    autoCapitalize={activeEditField === 'full_name' ? 'words' : 'none'}
+                  />
+                  <TouchableOpacity style={[styles.saveBtn, { backgroundColor: accentColor }]} onPress={() => handleUpdateGeneral(activeEditField!)}>
+                    <Text style={styles.saveBtnText}>{dict.saveChanges}</Text>
                   </TouchableOpacity>
                 </>
-              )
-            ) : activeEditField === 'password' ? (
-              <>
-                <Text style={styles.editorTitle}>Buat Password Baru</Text>
-                <TextInput style={styles.input} value={otpPassword} onChangeText={setOtpPassword} placeholder="Kode OTP dari Email" keyboardType="numeric" />
-                <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="Password Baru" secureTextEntry />
-                <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Konfirmasi Password Baru" secureTextEntry />
-                <TouchableOpacity style={styles.saveBtn} onPress={handleVerifyPassword}>
-                  {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Simpan Password</Text>}
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.editorTitle}>Update {activeEditField.replace('_', ' ').toUpperCase()}</Text>
-                <TextInput 
-                  style={styles.input} value={inputValue} onChangeText={setInputValue} 
-                  placeholder={activeEditField === 'gender' ? 'PRIA / WANITA' : activeEditField === 'birth_date' ? 'DD/MM/YYYY' : `Masukkan data baru`} 
-                />
-                <TouchableOpacity style={styles.saveBtn} onPress={() => handleUpdateGeneral(activeEditField)}>
-                  {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Simpan</Text>}
-                </TouchableOpacity>
-              </>
-            )}
+              )}
+            </ScrollView>
+          </View>
+        </KeyboardFocus>
+      </Modal>
 
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setActiveEditField(null); setEmailStep(0); }} disabled={loading}>
-              <Text style={styles.cancelBtnText}>Batal</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.card}>
-            {renderField('Nama Lengkap', userData.full_name, 'full_name')}
-            {renderField('Username', userData.username, 'username')}
-            {renderField('Jenis Kelamin', userData.gender, 'gender')}
-            {renderField('Tanggal Lahir', userData.birth_date, 'birth_date')}
-            {renderField('Nomor Ponsel', userData.phone_number, 'phone_number')}
-            {renderField('Email', userData.email, 'email')}
-            
-            <View style={styles.fieldContainer}>
-              <View>
-                <Text style={styles.label}>Keamanan</Text>
-                <Text style={styles.value}>Password Akun</Text>
-              </View>
-              <TouchableOpacity onPress={handleRequestPassword}>
-                {loading && activeEditField === 'password' ? <ActivityIndicator size="small" color="#007AFF" /> : <Text style={styles.editBtnText}>Ganti</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </ScrollView>
-    </AppLayout>
+      <LoadingSpinnerApp visible={loading} />
+      
+      <NotificationInteractive 
+        visible={notifVisible} 
+        title={notifConfig.title} 
+        message={notifConfig.message} 
+        type={notifConfig.type} 
+        buttons={[{ 
+          text: 'OK', 
+          onPress: () => {
+            setNotifVisible(false);
+            if (notifConfig.onOk) notifConfig.onOk();
+          } 
+        }]}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  avatarSection: { alignItems: 'center', marginVertical: 24 },
-  changePhotoBtn: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#E5E5EA', borderRadius: 20 },
-  changePhotoText: { color: '#007AFF', fontWeight: '600' },
-  card: { backgroundColor: '#FFF', borderRadius: 12, overflow: 'hidden', marginHorizontal: 4, marginBottom: 20 },
-  fieldContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
-  label: { fontSize: 12, color: '#8E8E93', marginBottom: 4 },
-  value: { fontSize: 16, color: '#1C1C1E', fontWeight: '500' },
-  editBtnText: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
-  editorCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 12, marginHorizontal: 4, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8 },
-  editorTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16, color: '#1C1C1E' },
-  descriptionText: { marginBottom: 12, color: '#8E8E93', fontSize: 14 },
-  input: { borderWidth: 1, borderColor: '#C7C7CC', borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 16, backgroundColor: '#FAFAFA' },
-  saveBtn: { backgroundColor: '#007AFF', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  cancelBtn: { padding: 14, alignItems: 'center' },
-  cancelBtnText: { color: '#FF3B30', fontSize: 16, fontWeight: '600' },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, paddingBottom: 12, paddingHorizontal: 16 },
+  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
+  headerTitle: { fontSize: 18, fontWeight: '700' },
+  scrollContainer: { paddingBottom: 50, paddingTop: 10 },
+  avatarSection: { alignItems: 'center', marginBottom: 32 },
+  avatarWrapper: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8, borderRadius: 100, padding: 4 },
+  avatarActionRow: { flexDirection: 'row', gap: 14, marginTop: -20, zIndex: 10 },
+  iconButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, borderWidth: 2, borderColor: '#FFF' },
+  listContainer: { paddingHorizontal: 20 },
+  fieldCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+  fieldIconContainer: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  fieldTextContainer: { flex: 1 },
+  label: { fontSize: 11, marginBottom: 4, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+  value: { fontSize: 15, fontWeight: '500' },
+  modalOverlay: {  width: width, height: height, backgroundColor: 'rgba(0,0,0,0.5)',  justifyContent: 'center',  alignItems: 'center', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, },
+  floatingCard: { width: '85%', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 20, maxHeight: '80%' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1 },
+  closeModalBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
+  modalTitle: { fontSize: 16, fontWeight: '700', textTransform: 'capitalize' },
+  modalBody: { padding: 24 },
+  infoBox: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 20 },
+  infoText: { flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 20 },
+  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, marginBottom: 16 },
+  saveBtn: { paddingVertical: 15, borderRadius: 12, alignItems: 'center', marginTop: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 6 },
+  saveBtnText: { color: '#FFF', fontSize: 15, fontWeight: '600', letterSpacing: 0.5 },
 });

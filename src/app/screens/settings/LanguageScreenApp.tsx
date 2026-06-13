@@ -45,7 +45,7 @@ export default function LanguageScreenApp() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.5 : 1 }]}>
-          <Ionicons name="chevron-back" size={26} color={theme.text} />
+          <Ionicons name="arrow-back" size={24} color={accentColor} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>{t.title}</Text>
         <View style={{ width: 40 }} />
@@ -140,9 +140,9 @@ export default function LanguageScreenApp() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 12 },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, paddingBottom: 12, paddingHorizontal: 16 },
+  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
+  headerTitle: { fontSize: 18, fontWeight: '700' },
   scroll: { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 8 },
   secTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginLeft: 8, marginBottom: 12 },
   previewContainer: { borderRadius: 20, borderWidth: 1, padding: 16, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },

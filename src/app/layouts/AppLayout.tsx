@@ -1,4 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { 
+  StyleSheet, View, Text, ScrollView, StatusBar, AppState, 
+  Modal, TouchableOpacity, BackHandler, Animated, 
+  PanResponder, Dimensions, Easing, TouchableWithoutFeedback,
+  Platform 
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -17,13 +23,7 @@ import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 import InputApp from '@/components/ui/InputApp';
 import { Avatar } from '@/components/ux/Avatar';
 import { useAppearance } from '@/utils/tools/AppearanceApp'; 
-import { useLanguage } from '@/utils/tools/LanguageApp';   
-import { 
-  StyleSheet, View, Text, ScrollView, StatusBar, AppState, 
-  Modal, TouchableOpacity, BackHandler, Animated, 
-  PanResponder, Dimensions, Easing, TouchableWithoutFeedback,
-  Platform 
-} from 'react-native';  
+import { useLanguage } from '@/utils/tools/LanguageApp';     
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -38,8 +38,10 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  
   const { theme, isDarkMode, accentColor } = useAppearance();
   const { t_appLayout: t } = useLanguage();
+
   const [isAppLoading, setIsAppLoading] = useState(false); 
   const isCheckingRef = useRef(false);
   const lastNotifiedStatusRef = useRef('ACTIVE'); 
@@ -51,20 +53,35 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const [appealReason, setAppealReason] = useState('');
   const [appealText, setAppealText] = useState('');
   const [userData, setUserData] = useState({ full_name: '', profileUrl: null as string | null });
+  
   const panX = useRef(new Animated.Value(0)).current;
   const isDrawerOpen = useRef(false);
+  
+  // Animasi untuk indikator tarik (in out effect)
   const pullAnim = useRef(new Animated.Value(0)).current;
+
   const [network, setNetwork] = useState({ isConnected: true, name: t?.hw_detecting || 'Mendeteksi...' });
   const [pingMs, setPingMs] = useState<number>(0);
   const [locationOn, setLocationOn] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState<number>(100);
   const [bluetoothOn, setBluetoothOn] = useState(true);
 
+  // Setup animasi looping tanda tarik
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pullAnim, { toValue: 1, duration: 800, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-        Animated.timing(pullAnim, { toValue: 0, duration: 800, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        Animated.timing(pullAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        Animated.timing(pullAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
       ])
     ).start();
   }, [pullAnim]);
@@ -78,7 +95,9 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     const isPending = status === 'PENDING';
     setBanNotifyConfig({
       title: isPending ? t?.ban_pending_title : t?.ban_title,
-      message: isPending ? `${t?.ban_pending_msg}"${reason}"` : `${t?.ban_msg}"${reason}"`,
+      message: isPending
+        ? `${t?.ban_pending_msg}"${reason}"`
+        : `${t?.ban_msg}"${reason}"`,
       buttons: isPending ? [
         { text: t?.btn_exit, style: 'cancel', onPress: () => BackHandler.exitApp() },
         { text: t?.btn_logout, style: 'default', onPress: () => { setBanNotifyVisible(false); handleForceLogout(); } }
@@ -121,14 +140,21 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     if (res.success) {
       lastNotifiedStatusRef.current = 'PENDING';
       setAppealVisible(false);
+      
       setBanNotifyConfig({
         title: t?.success_title,
         message: t?.success_msg,
         buttons: [
-          { text: t?.btn_ok, style: 'default', onPress: () => {
+          { 
+            text: t?.btn_ok, 
+            style: 'default', 
+            onPress: () => {
               setBanNotifyVisible(false);
-              setTimeout(() => { triggerBanNotification(appealReason, 'PENDING'); }, 350);
-          }}
+              setTimeout(() => {
+                triggerBanNotification(appealReason, 'PENDING');
+              }, 350);
+            } 
+          }
         ]
       });
       setBanNotifyVisible(true);
@@ -164,13 +190,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        if (!isDrawerOpen.current && gestureState.x0 > 40) {
-          return false;
-        }
-        return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
-      },
+      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
       onPanResponderMove: (_, gestureState) => {
         let newX = isDrawerOpen.current ? DRAWER_WIDTH + gestureState.dx : gestureState.dx;
         if (newX < 0) newX = 0;
@@ -178,14 +198,8 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
         panX.setValue(newX);
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > SCREEN_WIDTH * 0.15 || gestureState.vx > 0.5) {
-          openDrawer();
-        } else if (gestureState.dx < -SCREEN_WIDTH * 0.15 || gestureState.vx < -0.5) {
-          closeDrawer();
-        } else {
-          if (isDrawerOpen.current) openDrawer();
-          else closeDrawer();
-        }
+        if (gestureState.dx > SCREEN_WIDTH * 0.2 || (isDrawerOpen.current && gestureState.dx > -SCREEN_WIDTH * 0.2)) openDrawer();
+        else closeDrawer();
       },
     })
   ).current;
@@ -197,6 +211,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
       if (cachedData && isMounted) {
         setUserData({ full_name: cachedData.full_name ?? '', profileUrl: cachedData.profiles ?? null });
       }
+      
       setTimeout(async () => {
         const user = await authDb.getSession(); 
         if (isMounted) setCurrentUser(user);
@@ -213,11 +228,13 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   useEffect(() => {
     let isMounted = true;
     let banInterval: ReturnType<typeof setInterval>;
+
     const timer = setTimeout(() => {
       const checkUserStatusAndSession = async () => {
         if (isCheckingRef.current) return; 
         const token = await authDb.getToken();
         if (!token) return;
+
         isCheckingRef.current = true;
         try {
           const sessionStatus = await DeviceService.checkSessionValidity();
@@ -225,6 +242,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
             await handleForceLogout();
             return;
           }
+
           const userStatusRes = await UserService.checkStatus();
           if (userStatusRes.success && isMounted) {
             if (userStatusRes.status === 'BANNED' || userStatusRes.status === 'PENDING') {
@@ -246,10 +264,23 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
           if (isMounted) isCheckingRef.current = false;
         }
       };
+
       checkUserStatusAndSession();
       banInterval = setInterval(() => { if (isMounted) checkUserStatusAndSession(); }, 10000);
     }, 600);
-    return () => { isMounted = false; if (banInterval) clearInterval(banInterval); clearTimeout(timer); };
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        // Handle when app comes back active
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+      if (banInterval) clearInterval(banInterval);
+      clearTimeout(timer);
+    };
   }, [t]);
 
   useEffect(() => {
@@ -260,26 +291,39 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     const timer = setTimeout(() => {
       const initHardware = async () => {
         try {
+          // Baterai
           const currentBattery = await Battery.getBatteryLevelAsync();
           if (currentBattery > 0 && isMounted) setBatteryLevel(Math.round(currentBattery * 100));
+          
+          // GPS Lebih Akurat (Bypass Cache OS)
           const providerStatus = await Location.getProviderStatusAsync();
           if (isMounted) setLocationOn(providerStatus.locationServicesEnabled);
+
+          // Inisialisasi Bluetooth Real-time
           const btState = await BluetoothStateManager.getState();
           if (isMounted) setBluetoothOn(btState === 'PoweredOn');
-        } catch(e) {}
+        } catch(e) {
+          console.log("Hardware check error:", e);
+        }
       };
+
       initHardware();
 
+      // Deteksi jaringan (Ping)
       const checkPing = async () => {
         if (!isConnectedRef.current) return;
         const start = Date.now();
         try {
           await fetch('https://clients3.google.com/generate_204', { cache: 'no-store' });
           if (isMounted) setPingMs(Date.now() - start);
-        } catch (error) { if (isMounted) setPingMs(-1); }
+        } catch (error) {
+          if (isMounted) setPingMs(-1);
+        }
       };
+
       pingInterval = setInterval(checkPing, 6000); 
 
+      // Polling GPS tiap 6 detik untuk jaga-jaga
       locationInterval = setInterval(async () => {
         try {
           const providerStatus = await Location.getProviderStatusAsync();
@@ -288,7 +332,8 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
       }, 6000);
     }, 800);
 
-    const btUnsubscribe = BluetoothStateManager.addListener((bluetoothState: BluetoothState) => {
+    // Listener Real-time Bluetooth
+        const btUnsubscribe = BluetoothStateManager.addListener((bluetoothState: BluetoothState) => {
       if (isMounted) setBluetoothOn(bluetoothState === 'PoweredOn');
     }, true);
 
@@ -326,11 +371,25 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     };
   }, [t]);
 
+  // FIX: Menggunakan Spinner untuk memuluskan transisi dan hilangkan delay (Anti-Blink)
   const handleNavigation = (route: string) => {
-    if (pathname === route) { closeDrawer(); return; }
+    if (pathname === route) {
+      closeDrawer();
+      return;
+    }
+    
+    // 1. Tutup drawer
     closeDrawer();
+    
+    // 2. Munculin Loading Spinner biar ada animasinya
     setIsAppLoading(true);
-    setTimeout(() => { router.replace(route as any); setIsAppLoading(false); }, 400); 
+    
+    // 3. Kasih delay sekitar 400ms biar animasinya keliatan premium, baru pindah layar
+    setTimeout(() => {
+      // Pake replace agar memory HP gak numpuk
+      router.replace(route as any); 
+      setIsAppLoading(false); // Matiin spinnernya
+    }, 400); 
   };
 
   const getNotificationType = () => {
@@ -360,6 +419,7 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     <View style={[styles.root, { backgroundColor: theme.surface }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={theme.surface} />
       
+      {/* Tampilkan LoadingSpinnerApp untuk Transisi Rute atau Fetch Data */}
       <LoadingSpinnerApp visible={isAppLoading} />
 
       <View style={[styles.sidebarContainer, { backgroundColor: theme.surface, paddingTop: insets.top + 20 }]}>
@@ -372,32 +432,74 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
         <View style={[styles.hardwareCapsule, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : accentColor }]}>
           <View style={styles.hardwareGrid}>
+            
+            {/* WIFI - Ikon silang saat mati dan warna Biru standar Wi-Fi */}
             <View style={styles.hardwareItem}>
-              <MaterialIcons name={network.isConnected && pingMs !== -1 ? "wifi" : "wifi-off"} size={22} color={network.isConnected && pingMs !== -1 ? "#007AFF" : "#8E8E93"} />
+              <MaterialIcons 
+                name={network.isConnected && pingMs !== -1 ? "wifi" : "wifi-off"} 
+                size={22} 
+                color={network.isConnected && pingMs !== -1 ? "#007AFF" : "#8E8E93"} 
+              />
               <View style={styles.hardwareTextWrapper}>
                 <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]} numberOfLines={1}>{network.name}</Text>
-                <Text style={[styles.hardwareSubText, {color: network.isConnected && pingMs !== -1 ? "#007AFF" : "#8E8E93"}]}>{network.isConnected && pingMs !== -1 ? `${pingMs}ms` : (t?.hw_offline || 'Offline')}</Text>
+                <Text style={[styles.hardwareSubText, {color: network.isConnected && pingMs !== -1 ? "#007AFF" : "#8E8E93"}]}>
+                  {network.isConnected && pingMs !== -1 ? `${pingMs}ms` : (t?.hw_offline || 'Offline')}
+                </Text>
               </View>
             </View>
+            
+            {/* BATERAI - Icon dan persentase berkurang otomatis */}
             <View style={styles.hardwareItem}>
-              <Ionicons name={batteryLevel > 80 ? "battery-full" : batteryLevel > 30 ? "battery-half" : "battery-dead"} size={22} color={batteryLevel > 80 ? "#34C759" : batteryLevel > 30 ? "#FFCC00" : "#FF3B30"} />
+              <Ionicons 
+                name={batteryLevel > 80 ? "battery-full" : batteryLevel > 30 ? "battery-half" : "battery-dead"} 
+                size={22} 
+                color={batteryLevel > 80 ? "#34C759" : batteryLevel > 30 ? "#FFCC00" : "#FF3B30"}
+              />
               <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]}>{batteryLevel}%</Text>
             </View>
+
+            {/* GPS / LOKASI - Ikon silang saat mati dan warna Hijau ala Google Maps */}
             <View style={styles.hardwareItem}>
-              <MaterialIcons name={locationOn ? "location-on" : "location-off"} size={22} color={locationOn ? "#34A853" : "#8E8E93"} />
-              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]}>{locationOn ? (t?.hw_gps_on || 'Location On') : (t?.hw_gps_off || 'Location Off')}</Text>
+              <MaterialIcons 
+                name={locationOn ? "location-on" : "location-off"} 
+                size={22} 
+                color={locationOn ? "#34A853" : "#8E8E93"}
+              />
+              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]}>
+                {locationOn ? (t?.hw_gps_on || 'GPS On') : (t?.hw_gps_off || 'GPS Off')}
+              </Text>
             </View>
+
+            {/* BLUETOOTH - Ikon silang saat mati dan warna Biru Bluetooth */}
             <View style={styles.hardwareItem}>
-              <MaterialIcons name={bluetoothOn ? "bluetooth" : "bluetooth-disabled"} size={22} color={bluetoothOn ? "#0082FC" : "#8E8E93"} />
-              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]}>{bluetoothOn ? (t?.hw_bt_on || 'BT On') : (t?.hw_bt_off || 'BT Off')}</Text>
+              <MaterialIcons 
+                name={bluetoothOn ? "bluetooth" : "bluetooth-disabled"} 
+                size={22} 
+                color={bluetoothOn ? "#0082FC" : "#8E8E93"}
+              />
+              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]}>
+                {bluetoothOn ? (t?.hw_bt_on || 'BT On') : (t?.hw_bt_off || 'BT Off')}
+              </Text>
             </View>
+            
+            {/* MODEL DEVICE */}
             <View style={styles.hardwareItem}>
               <Ionicons name="phone-portrait" size={22} color={isDarkMode ? theme.text : "#A2AAAD"} />
-              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]} numberOfLines={1}>{Device.modelName || 'Unknown Device'}</Text>
+              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]} numberOfLines={1}>
+                {Device.modelName || 'Unknown Device'}
+              </Text>
             </View>
+
+            {/* LOGO & VERSI OS - Hitam/Putih dinamis untuk Apple, Hijau untuk Android */}
             <View style={styles.hardwareItem}>
-              <Ionicons name={Platform.OS === 'ios' ? 'logo-apple' : 'logo-android'} size={22} color={Platform.OS === 'ios' ? (isDarkMode ? '#FFFFFF' : '#000000') : '#3DDC84'} />
-              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]} numberOfLines={1}>{Platform.OS === 'ios' ? 'iOS' : 'Android'} {Device.osVersion}</Text>
+              <Ionicons 
+                name={Platform.OS === 'ios' ? 'logo-apple' : 'logo-android'} 
+                size={22} 
+                color={Platform.OS === 'ios' ? (isDarkMode ? '#FFFFFF' : '#000000') : '#3DDC84'} 
+              />
+              <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]} numberOfLines={1}>
+                {Platform.OS === 'ios' ? 'iOS' : 'Android'} {Device.osVersion}
+              </Text>
             </View>
           </View>
         </View>
@@ -406,7 +508,14 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
           {menuItems.map((item) => {
             const isActive = pathname === item.route;
             return (
-              <TouchableOpacity key={item.id} style={[styles.menuItem, isActive && { backgroundColor: accentColor, shadowColor: accentColor, elevation: 4, shadowOpacity: 0.3, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8 }]} onPress={() => handleNavigation(item.route)}>
+              <TouchableOpacity 
+                key={item.id} 
+                style={[
+                    styles.menuItem, 
+                    isActive && { backgroundColor: accentColor, shadowColor: accentColor, elevation: 4, shadowOpacity: 0.3, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8 }
+                ]} 
+                onPress={() => handleNavigation(item.route)}
+              >
                 <View style={[styles.menuIconBox, isActive ? { backgroundColor: 'transparent' } : { backgroundColor: `${item.color}15` }]}>
                   <Ionicons name={item.icon as any} size={20} color={isActive ? '#FFFFFF' : item.color} />
                 </View>
@@ -418,22 +527,25 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
       </View>
 
       <Animated.View style={[styles.mainAppContainer, { backgroundColor: theme.bg, transform: [{ translateX: panX }] }]} {...panResponder.panHandlers}>
-        
-        <Animated.View style={[
-          styles.gestureIndicatorFixed,
-          {
-            opacity: panX.interpolate({ inputRange: [0, 50], outputRange: [1, 0], extrapolate: 'clamp' }),
-            transform: [{ translateX: pullAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 4] }) }]
-          }
-        ]}>
-            <TouchableOpacity 
-              activeOpacity={0.6}
-              onPress={openDrawer} 
-              style={styles.hitboxTipis}
-            >
-               <Ionicons name="chevron-forward" size={18} color={isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.2)'} />
-            </TouchableOpacity>
-        </Animated.View>
+        {!isDrawerOpen.current && (
+          <Animated.View style={[
+            styles.gestureIndicatorFixed,
+            {
+              transform: [{
+                translateX: pullAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 6], 
+                })
+              }],
+              opacity: pullAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.3, 1], 
+              })
+            }
+          ]}>
+             <Ionicons name="chevron-forward" size={24} color={isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.3)'} />
+          </Animated.View>
+        )}
 
         {isDrawerOpen && (
           <TouchableWithoutFeedback onPress={closeDrawer}>
@@ -455,17 +567,28 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
         </SafeAreaView>
       </Animated.View>
 
-      <NotificationInteractive visible={banNotifyVisible} title={banNotifyConfig.title} message={banNotifyConfig.message} type={getNotificationType()} buttons={banNotifyConfig.buttons} onDismiss={() => {}} />
+      <NotificationInteractive
+        visible={banNotifyVisible}
+        title={banNotifyConfig.title}
+        message={banNotifyConfig.message}
+        type={getNotificationType()}
+        buttons={banNotifyConfig.buttons}
+        onDismiss={() => {}} 
+      />
 
       <Modal visible={appealVisible} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>{t?.modal_appeal_title}</Text>
             <Text style={[styles.modalSubtitle, { color: theme.subText }]}>{t?.modal_appeal_sub}</Text>
+            
             <InputApp iconName="help-circle" iconColor="#8E8E93" placeholder={t?.input_reason || 'Reason'} value={appealReason} onChangeText={setAppealReason} />
             <InputApp iconName="document-text" iconColor="#8E8E93" placeholder={t?.input_detail || 'Detail'} value={appealText} onChangeText={setAppealText} />
+
             <View style={styles.modalButtons}>
-              {/* Tombol Batal Dihapus, Tersisa Kirim Banding Full Width */}
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: isDarkMode ? 'rgba(255, 69, 58, 0.15)' : '#FFECEB' }]} onPress={() => setAppealVisible(false)}>
+                <Text style={[styles.btnTextCancel, { color: isDarkMode ? '#FF453A' : '#FF3B30' }]}>{t?.btn_cancel || 'Cancel'}</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: accentColor }]} onPress={handleAppealSubmit}>
                 <Text style={styles.btnTextSubmit}>{t?.btn_submit_appeal || 'Submit'}</Text>
               </TouchableOpacity>
@@ -496,8 +619,7 @@ const styles = StyleSheet.create({
   mainAppContainer: { flex: 1, shadowColor: '#000', shadowOffset: { width: -10, height: 0 }, shadowOpacity: 0.05, shadowRadius: 20, elevation: 15 },
   overlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: '#000', zIndex: 10 },
   container: { flex: 1, zIndex: 1 },
-  gestureIndicatorFixed: { position: 'absolute', left: 0, top: '50%', marginTop: -30, height: 60, width: 30, justifyContent: 'center', alignItems: 'flex-start', zIndex: 9999 },
-  hitboxTipis: { width: 30, height: 60, justifyContent: 'center', alignItems: 'flex-start', paddingLeft: 4, borderTopRightRadius: 8, borderBottomRightRadius: 8 },
+  gestureIndicatorFixed: { position: 'absolute', left: 2, top: '50%', marginTop: -15, height: 30, width: 24, justifyContent: 'center', alignItems: 'flex-start', zIndex: 9999 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
   headerLeft: { flex: 1 },
   headerRight: { flex: 1 },
@@ -509,7 +631,8 @@ const styles = StyleSheet.create({
   modalContent: { padding: 24, borderRadius: 20, elevation: 10 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
   modalSubtitle: { fontSize: 13, marginBottom: 20, textAlign: 'center' },
-  modalButtons: { flexDirection: 'row', marginTop: 16, justifyContent: 'center' }, // Diganti dari space-between jadi center
+  modalButtons: { flexDirection: 'row', marginTop: 16, justifyContent: 'space-between' },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 25, alignItems: 'center', marginHorizontal: 5 },
+  btnTextCancel: { fontWeight: 'bold' },
   btnTextSubmit: { color: '#FFF', fontWeight: 'bold' }
 });

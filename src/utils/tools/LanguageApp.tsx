@@ -4,6 +4,7 @@ import { languageDict, LANGUAGE_OPTIONS } from '../language/LanguageScreenAppLan
 import { appearanceDict } from '../language/AppearanceScreenAppLanguage';
 import { settingDict } from '../language/SettingScreenAppLanguage';
 import { appLayoutDict } from '../language/AppLayoutLanguage';
+import { accountScreenDict } from '../language/AccountScreenAppLanguage';
 
 export type LangCode = 'id' | 'en' | 'zh' | 'ja' | 'th' | 'vi';
 
@@ -16,6 +17,7 @@ interface LanguageContextType {
   t_appearance: any;
   t_setting: any; 
   t_appLayout: any;
+  t_account: any;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -54,20 +56,20 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
   const t_language = languageDict[language] || languageDict['id'];
   const t_appearance = appearanceDict[language] || appearanceDict['id'];
   const t_setting = settingDict[language] || settingDict['id']; 
-  const t_appLayout = appLayoutDict[language] || appLayoutDict['id']; 
-
-  if (loading) return null;
+  const t_appLayout = appLayoutDict[language] || appLayoutDict['id'];
+  const t_account = accountScreenDict[language] || accountScreenDict['id']; 
 
   return (
     <LanguageContext.Provider value={{ 
       language, 
       setLanguage, 
-      loading,
-      LANGUAGE_OPTIONS,
-      t_language,
-      t_appearance,
-      t_setting,
+      loading, 
+      LANGUAGE_OPTIONS, 
+      t_language, 
+      t_appearance, 
+      t_setting, 
       t_appLayout,
+      t_account
     }}>
       {children}
     </LanguageContext.Provider>
@@ -76,6 +78,8 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
-  if (!context) throw new Error('useLanguage must be used within LanguageProvider');
+  if (context === undefined) {
+    throw new Error('useLanguage must be used within a LanguageProvider');
+  }
   return context;
 };

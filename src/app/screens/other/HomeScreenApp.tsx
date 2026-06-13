@@ -72,10 +72,8 @@ export default function HomeScreenApp() {
       <View style={styles.card}>
         <Text style={styles.welcome}>Sesi Aktif Terautentikasi</Text>
         <Text style={styles.name}>{user?.full_name}</Text>
-        <Text style={styles.username}>@{user?.username}</Text>
-        
+        <Text style={styles.username}>{user?.username}</Text>
         <View style={styles.divider} />
-        
         <View style={styles.row}><Text style={styles.lbl}>Email</Text><Text style={styles.val}>{user?.email}</Text></View>
         <View style={styles.row}><Text style={styles.lbl}>Telepon</Text><Text style={styles.val}>{user?.phone_number || '-'}</Text></View>
         <View style={styles.row}><Text style={styles.lbl}>Gender</Text><Text style={styles.val}>{user?.gender}</Text></View>
@@ -88,6 +86,7 @@ export default function HomeScreenApp() {
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteAccount}>
           <Text style={styles.deleteTxt}>Hapus Akun Permanen</Text>
         </TouchableOpacity>
+        
       </View>
     </AppLayout>
   );
