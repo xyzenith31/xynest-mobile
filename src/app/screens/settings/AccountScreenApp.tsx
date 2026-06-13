@@ -19,7 +19,7 @@ export default function AccountScreenApp() {
   const router = useRouter();
   const { theme, accentColor, isDarkMode } = useAppearance();
   const { t_account: dict } = useLanguage(); 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeEditField, setActiveEditField] = useState<string | null>(null);
   const [emailStep, setEmailStep] = useState<number>(0);
   const [newEmail, setNewEmail] = useState('');
@@ -48,10 +48,17 @@ export default function AccountScreenApp() {
   useEffect(() => { loadProfileData(); }, []);
 
   const loadProfileData = async () => {
-    const cachedData = await authDb.getUserData();
-    if (cachedData) updateStateFromData(cachedData);
-    const result = await UserService.getProfile();
-    if (result.success && result.data) updateStateFromData(result.data);
+    setLoading(true);
+    try {
+      const cachedData = await authDb.getUserData();
+      if (cachedData) updateStateFromData(cachedData);
+      const result = await UserService.getProfile();
+      if (result.success && result.data) updateStateFromData(result.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateStateFromData = (data: any) => {

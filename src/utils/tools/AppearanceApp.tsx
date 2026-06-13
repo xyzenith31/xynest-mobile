@@ -77,7 +77,8 @@ export const AppearanceProvider = ({ children }: { children: React.ReactNode }) 
     chatIncomingText: isDarkMode ? '#FFFFFF' : '#000000'
   };
 
-  if (loading) return null;
+  // Render children immediately so screens can show their own loading UI while appearance settings load
+  // (previously returned null here which prevented per-screen spinner from showing on mount)
 
   return (
     <AppearanceContext.Provider value={{ themeMode, setThemeMode, isDarkMode, accentColor, setAccentColor, textSize, setTextSize, theme, loading }}>

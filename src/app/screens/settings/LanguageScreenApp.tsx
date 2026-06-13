@@ -22,7 +22,7 @@ if (Platform.OS === 'android') {
 export default function LanguageScreenApp() {
   const router = useRouter();
   const { theme, accentColor, isDarkMode } = useAppearance();
-  const { language, setLanguage, t_language, LANGUAGE_OPTIONS } = useLanguage();
+  const { language, setLanguage, t_language, LANGUAGE_OPTIONS, loading: langLoading } = useLanguage();
   const [isApplying, setIsApplying] = useState(false); // State Loading
   const t = t_language; 
 
@@ -133,7 +133,7 @@ export default function LanguageScreenApp() {
           })}
         </View>
       </ScrollView>
-      <LoadingSpinnerApp visible={isApplying} />
+      <LoadingSpinnerApp visible={isApplying || langLoading} />
     </SafeAreaView>
   );
 }

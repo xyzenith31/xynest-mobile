@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppearance } from '../../../utils/tools/AppearanceApp';
 import { useLanguage } from '../../../utils/tools/LanguageApp';
-import LoadingSpinnerApp from '../../../components/ui/LoadingSpinnerApp'; // Import spinner buatanmu
+import LoadingSpinnerApp from '../../../components/ui/LoadingSpinnerApp';
 
 const ACCENT_COLORS = [
   '#007AFF', '#34C759', '#AF52DE', '#FF9500', '#FF2D55', '#5AC8FA', '#FFCC00', '#5856D6', '#FF3B30', '#10B981',
@@ -16,7 +16,7 @@ const ACCENT_COLORS = [
 export default function AppearanceScreenApp() {
   const router = useRouter();
   
-  const { themeMode, setThemeMode, isDarkMode, accentColor, setAccentColor, textSize, setTextSize, theme } = useAppearance();
+  const { themeMode, setThemeMode, isDarkMode, accentColor, setAccentColor, textSize, setTextSize, theme, loading: appearanceLoading } = useAppearance();
   const { t_appearance } = useLanguage();
   const [chatBgImage, setChatBgImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); // State untuk mengontrol spinner
@@ -31,14 +31,18 @@ export default function AppearanceScreenApp() {
   const currentTextSize = TEXT_SIZES.find(txt => txt.id === textSize)?.size || 15;
   const sidebarTextSize = currentTextSize > 15 ? 11 : 10; 
 
-  const handleThemeChange = useCallback((mode: 'system' | 'light' | 'dark') => {
+  const handleThemeChange = useCallback(async (mode: 'system' | 'light' | 'dark') => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setThemeMode(mode);
+    setIsLoading(true);
+    await setThemeMode(mode);
+    setIsLoading(false);
   }, [setThemeMode]);
 
-  const handleTextSizeChange = useCallback((id: any) => {
+  const handleTextSizeChange = useCallback(async (id: any) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setTextSize(id);
+    setIsLoading(true);
+    await setTextSize(id);
+    setIsLoading(false);
   }, [setTextSize]);
 
   const pickImage = async () => {
@@ -137,7 +141,7 @@ export default function AppearanceScreenApp() {
             keyExtractor={(item) => item}
             contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
             renderItem={({ item }) => (
-              <Pressable onPress={() => setAccentColor(item)} style={[styles.colorRing, accentColor === item && { borderColor: item }]}>
+              <Pressable onPress={async () => { setIsLoading(true); await setAccentColor(item); setIsLoading(false); }} style={[styles.colorRing, accentColor === item && { borderColor: item }]}>
                 <View style={[styles.colorDot, { backgroundColor: item, justifyContent: 'center', alignItems: 'center' }]}>
                   {accentColor === item && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
                 </View>
@@ -175,7 +179,7 @@ export default function AppearanceScreenApp() {
         </Pressable>
 
       </ScrollView>
-      <LoadingSpinnerApp visible={isLoading} />
+      <LoadingSpinnerApp visible={appearanceLoading || isLoading} />
     </SafeAreaView>
   );
 }

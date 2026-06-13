@@ -1,3 +1,5 @@
+// xynest-mobile/src/app/_layout.tsx
+
 import React from 'react';
 import { LogBox } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
@@ -27,7 +29,8 @@ export default function RootLayout() {
             <Stack 
               screenOptions={{ 
                 headerShown: false, 
-                contentStyle: { backgroundColor: themeBackgroundColor }
+                contentStyle: { backgroundColor: themeBackgroundColor },
+                animation: 'slide_from_right' // Default stack animation
               }}
             >
               <Stack.Screen name="index" options={{ animation: 'none' }} />
@@ -35,6 +38,15 @@ export default function RootLayout() {
               <Stack.Screen name="screens/auth/RegisterScreenApp" options={{ presentation: 'transparentModal', animation: 'none' }} />
               <Stack.Screen name="screens/auth/VerificationScreenApp" options={{ animation: 'fade' }} />
               <Stack.Screen name="screens/other/HomeScreenApp" options={{ animation: 'fade' }} />
+              
+              {/* === TAMBAHKAN STACK SCREEN SETTINGS DI SINI AGAR BISA DITIMPA/OVERLAY === */}
+              <Stack.Screen name="screens/settings/SettingScreenApp" options={{ animation: 'fade' }} />
+              <Stack.Screen name="screens/settings/AccountScreenApp" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="screens/settings/AppearanceScreenApp" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="screens/settings/DeviceManagerScreenApp" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="screens/settings/DonationScreenApp" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="screens/settings/LanguageScreenApp" options={{ animation: 'slide_from_right' }} />
+
               <Stack.Screen name="screens/other/NotFoundScreenApp" options={{ animation: 'fade', presentation: 'modal' }} />
             </Stack>
           </ThemeProvider>
