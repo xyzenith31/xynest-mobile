@@ -34,6 +34,7 @@ export default function RootLayout() {
               <Stack.Screen name="screens/auth/RegisterScreenApp" options={{ presentation: 'transparentModal', animation: 'none' }} />
               <Stack.Screen name="screens/auth/VerificationScreenApp" options={{ animation: 'fade' }} />
               <Stack.Screen name="screens/other/HomeScreenApp" options={{ animation: 'fade' }} />
+              <Stack.Screen name="screens/other/NotFoundScreenApp" options={{ animation: 'fade', presentation: 'modal' }} />
             </Stack>
           </ThemeProvider>
         </LanguageProvider>

@@ -1,10 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { 
-  StyleSheet, View, Text, ScrollView, StatusBar, AppState, 
-  Modal, TouchableOpacity, BackHandler, Animated, 
-  PanResponder, Dimensions, Easing, TouchableWithoutFeedback,
-  Platform 
-} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -24,6 +18,12 @@ import InputApp from '@/components/ui/InputApp';
 import { Avatar } from '@/components/ux/Avatar';
 import { useAppearance } from '@/utils/tools/AppearanceApp'; 
 import { useLanguage } from '@/utils/tools/LanguageApp';     
+import { 
+  StyleSheet, View, Text, ScrollView, StatusBar, AppState, 
+  Modal, TouchableOpacity, BackHandler, Animated, 
+  PanResponder, Dimensions, Easing, TouchableWithoutFeedback,
+  Platform 
+} from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -38,10 +38,8 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  
   const { theme, isDarkMode, accentColor } = useAppearance();
   const { t_appLayout: t } = useLanguage();
-
   const [isAppLoading, setIsAppLoading] = useState(false); 
   const isCheckingRef = useRef(false);
   const lastNotifiedStatusRef = useRef('ACTIVE'); 
@@ -53,13 +51,9 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const [appealReason, setAppealReason] = useState('');
   const [appealText, setAppealText] = useState('');
   const [userData, setUserData] = useState({ full_name: '', profileUrl: null as string | null });
-  
   const panX = useRef(new Animated.Value(0)).current;
   const isDrawerOpen = useRef(false);
-  
-  // Animasi untuk indikator tarik (in out effect)
   const pullAnim = useRef(new Animated.Value(0)).current;
-
   const [network, setNetwork] = useState({ isConnected: true, name: t?.hw_detecting || 'Mendeteksi...' });
   const [pingMs, setPingMs] = useState<number>(0);
   const [locationOn, setLocationOn] = useState(false);
@@ -271,7 +265,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
-        // Handle when app comes back active
       }
     });
 
@@ -291,15 +284,12 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     const timer = setTimeout(() => {
       const initHardware = async () => {
         try {
-          // Baterai
           const currentBattery = await Battery.getBatteryLevelAsync();
           if (currentBattery > 0 && isMounted) setBatteryLevel(Math.round(currentBattery * 100));
           
-          // GPS Lebih Akurat (Bypass Cache OS)
           const providerStatus = await Location.getProviderStatusAsync();
           if (isMounted) setLocationOn(providerStatus.locationServicesEnabled);
 
-          // Inisialisasi Bluetooth Real-time
           const btState = await BluetoothStateManager.getState();
           if (isMounted) setBluetoothOn(btState === 'PoweredOn');
         } catch(e) {
@@ -309,7 +299,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
       initHardware();
 
-      // Deteksi jaringan (Ping)
       const checkPing = async () => {
         if (!isConnectedRef.current) return;
         const start = Date.now();
@@ -322,8 +311,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
       };
 
       pingInterval = setInterval(checkPing, 6000); 
-
-      // Polling GPS tiap 6 detik untuk jaga-jaga
       locationInterval = setInterval(async () => {
         try {
           const providerStatus = await Location.getProviderStatusAsync();
@@ -332,7 +319,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
       }, 6000);
     }, 800);
 
-    // Listener Real-time Bluetooth
         const btUnsubscribe = BluetoothStateManager.addListener((bluetoothState: BluetoothState) => {
       if (isMounted) setBluetoothOn(bluetoothState === 'PoweredOn');
     }, true);
@@ -371,24 +357,17 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
     };
   }, [t]);
 
-  // FIX: Menggunakan Spinner untuk memuluskan transisi dan hilangkan delay (Anti-Blink)
   const handleNavigation = (route: string) => {
     if (pathname === route) {
       closeDrawer();
       return;
     }
-    
-    // 1. Tutup drawer
     closeDrawer();
-    
-    // 2. Munculin Loading Spinner biar ada animasinya
     setIsAppLoading(true);
     
-    // 3. Kasih delay sekitar 400ms biar animasinya keliatan premium, baru pindah layar
     setTimeout(() => {
-      // Pake replace agar memory HP gak numpuk
       router.replace(route as any); 
-      setIsAppLoading(false); // Matiin spinnernya
+      setIsAppLoading(false);
     }, 400); 
   };
 
@@ -401,12 +380,12 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
   const menuItems = [
     { id: 'home', title: t?.menu_home || 'Home', icon: 'home', route: '/screens/other/HomeScreenApp', color: '#FF2D55' },
-    { id: 'chats', title: t?.menu_chats || 'Chats', icon: 'chatbubbles', route: '/screens/chats/ChatScreenApp', color: '#007AFF' },
-    { id: 'contacts', title: t?.menu_contacts || 'Contacts', icon: 'people', route: '/screens/contacts/ContactScreenApp', color: '#34C759' },
-    { id: 'tasks', title: t?.menu_tasks || 'Tasks', icon: 'checkmark-circle', route: '/screens/tasks/TaskScreenApp', color: '#FF9500' },
-    { id: 'location', title: t?.menu_location || 'Location', icon: 'location', route: '/screens/location/LocationScreenApp', color: '#FF3B30' },
+    { id: 'chats', title: t?.menu_chats || 'Chats', icon: 'chatbubbles', route: '/screens/other/NotFoundScreenApp', color: '#007AFF' },
+    { id: 'contacts', title: t?.menu_contacts || 'Contacts', icon: 'people', route: '/screens/other/NotFoundScreenApp', color: '#34C759' },
+    { id: 'tasks', title: t?.menu_tasks || 'Tasks', icon: 'checkmark-circle', route: '/screens/other/NotFoundScreenApp', color: '#FF9500' },
+    { id: 'location', title: t?.menu_location || 'Location', icon: 'location', route: '/screens/other/NotFoundScreenApp', color: '#FF3B30' },
     { id: 'settings', title: t?.menu_settings || 'Settings', icon: 'settings', route: '/screens/settings/SettingScreenApp', color: '#8E8E93' },
-    { id: 'support', title: t?.menu_support || 'Support', icon: 'help-buoy', route: '/screens/support/SupportScreenApp', color: '#AF52DE' },
+    { id: 'support', title: t?.menu_support || 'Support', icon: 'help-buoy', route: '/screens/other/NotFoundScreenApp', color: '#AF52DE' },
   ];
 
   const content = scrollable ? (
@@ -418,8 +397,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   return (
     <View style={[styles.root, { backgroundColor: theme.surface }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={theme.surface} />
-      
-      {/* Tampilkan LoadingSpinnerApp untuk Transisi Rute atau Fetch Data */}
       <LoadingSpinnerApp visible={isAppLoading} />
 
       <View style={[styles.sidebarContainer, { backgroundColor: theme.surface, paddingTop: insets.top + 20 }]}>
@@ -432,8 +409,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
 
         <View style={[styles.hardwareCapsule, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : accentColor }]}>
           <View style={styles.hardwareGrid}>
-            
-            {/* WIFI - Ikon silang saat mati dan warna Biru standar Wi-Fi */}
             <View style={styles.hardwareItem}>
               <MaterialIcons 
                 name={network.isConnected && pingMs !== -1 ? "wifi" : "wifi-off"} 
@@ -448,7 +423,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
               </View>
             </View>
             
-            {/* BATERAI - Icon dan persentase berkurang otomatis */}
             <View style={styles.hardwareItem}>
               <Ionicons 
                 name={batteryLevel > 80 ? "battery-full" : batteryLevel > 30 ? "battery-half" : "battery-dead"} 
@@ -458,7 +432,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
               <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]}>{batteryLevel}%</Text>
             </View>
 
-            {/* GPS / LOKASI - Ikon silang saat mati dan warna Hijau ala Google Maps */}
             <View style={styles.hardwareItem}>
               <MaterialIcons 
                 name={locationOn ? "location-on" : "location-off"} 
@@ -470,7 +443,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
               </Text>
             </View>
 
-            {/* BLUETOOTH - Ikon silang saat mati dan warna Biru Bluetooth */}
             <View style={styles.hardwareItem}>
               <MaterialIcons 
                 name={bluetoothOn ? "bluetooth" : "bluetooth-disabled"} 
@@ -482,7 +454,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
               </Text>
             </View>
             
-            {/* MODEL DEVICE */}
             <View style={styles.hardwareItem}>
               <Ionicons name="phone-portrait" size={22} color={isDarkMode ? theme.text : "#A2AAAD"} />
               <Text style={[styles.hardwareText, { color: isDarkMode ? theme.text : '#FFF' }]} numberOfLines={1}>
@@ -490,7 +461,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
               </Text>
             </View>
 
-            {/* LOGO & VERSI OS - Hitam/Putih dinamis untuk Apple, Hijau untuk Android */}
             <View style={styles.hardwareItem}>
               <Ionicons 
                 name={Platform.OS === 'ios' ? 'logo-apple' : 'logo-android'} 

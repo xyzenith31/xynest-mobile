@@ -1,5 +1,3 @@
-// src/app/screens/settings/SettingScreenApp.tsx
-
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { StyleSheet, Text, View, Animated, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -43,7 +41,6 @@ const SettingItem = memo(({ title, icon, iconColor = '#007AFF', textColor, divid
     ]).start();
   };
 
-  // PERBAIKAN BUG: Menggunakan kombinasi warna alpha rgba transparan agar adaptif di Dark Mode
   const bgIconCalculated = isDestructive 
     ? (isDarkMode ? 'rgba(255, 69, 58, 0.15)' : '#FFEBEA') 
     : `${iconColor}15`;
@@ -81,7 +78,6 @@ export default function SettingScreenApp() {
   const [loading, setLoading] = useState(false);
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
   const [showSuccessLogout, setShowSuccessLogout] = useState(false);
-
   const { theme, isDarkMode } = useAppearance();
   const { t_setting: t } = useLanguage();
 
@@ -142,31 +138,27 @@ export default function SettingScreenApp() {
           <Text style={[styles.usernameText, { color: theme.subText }]}>{userData?.username || 'username'}</Text>
         </View>
 
-        {/* SECTION AKUN & KEAMANAN */}
         <Text style={[styles.sectionTitle, { color: theme.subText }]}>{t.sec_account}</Text>
         <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <SettingItem title={t.item_account} icon="person-outline" iconColor="#007AFF" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/AccountScreenApp')} />
-          <SettingItem title={t.item_privacy} icon="lock-closed-outline" iconColor="#34C759" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} />
+          <SettingItem title={t.item_privacy} icon="lock-closed-outline" iconColor="#34C759" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/other/NotFoundScreenApp')} />
           <SettingItem title={t.item_device} icon="hardware-chip-outline" iconColor="#8E8E93" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/DeviceManagerScreenApp')} hideDivider />
         </View>
 
-        {/* SECTION PREFERENSI */}
         <Text style={[styles.sectionTitle, { color: theme.subText }]}>{t.sec_pref}</Text>
         <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <SettingItem title={t.item_appearance} icon="color-palette-outline" iconColor="#AF52DE" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/AppearanceScreenApp')} />
-          <SettingItem title={t.item_notif} icon="notifications-outline" iconColor="#FF9500" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} />
-          <SettingItem title={t.item_storage} icon="server-outline" iconColor="#5856D6" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} />
+          <SettingItem title={t.item_notif} icon="notifications-outline" iconColor="#FF9500" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/other/NotFoundScreenApp')} />
+          <SettingItem title={t.item_storage} icon="server-outline" iconColor="#5856D6" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/other/NotFoundScreenApp')} />
           <SettingItem title={t.item_lang} icon="language-outline" iconColor="#32ADE6" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/LanguageScreenApp')} hideDivider />
         </View>
 
-        {/* SECTION LAINNYA */}
         <Text style={[styles.sectionTitle, { color: theme.subText }]}>{t.sec_other}</Text>
         <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <SettingItem title={t.item_access} icon="accessibility-outline" iconColor="#00C7BE" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} />
+          <SettingItem title={t.item_access} icon="accessibility-outline" iconColor="#00C7BE" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/other/NotFoundScreenApp')} />
           <SettingItem title={t.item_donate} icon="heart-outline" iconColor="#FF2D55" textColor={theme.text} dividerColor={theme.border} isDarkMode={isDarkMode} onPress={() => router.push('/screens/settings/DonationScreenApp')} hideDivider />
         </View>
 
-        {/* LOGOUT BUTTON CARD */}
         <View style={[styles.sectionCard, styles.logoutCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <SettingItem 
             title={t.item_logout} 
