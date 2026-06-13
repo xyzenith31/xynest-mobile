@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppearance } from '../../../utils/tools/AppearanceApp';
 import { useLanguage } from '../../../utils/tools/LanguageApp';
+import LoadingSpinnerApp from '../../../components/ui/LoadingSpinnerApp'; // Import spinner buatanmu
 
 const ACCENT_COLORS = [
   '#007AFF', '#34C759', '#AF52DE', '#FF9500', '#FF2D55', '#5AC8FA', '#FFCC00', '#5856D6', '#FF3B30', '#10B981',
@@ -18,6 +19,7 @@ export default function AppearanceScreenApp() {
   const { themeMode, setThemeMode, isDarkMode, accentColor, setAccentColor, textSize, setTextSize, theme } = useAppearance();
   const { t_appearance } = useLanguage();
   const [chatBgImage, setChatBgImage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // State untuk mengontrol spinner
   const t = t_appearance;
 
   const TEXT_SIZES = [
@@ -42,15 +44,21 @@ export default function AppearanceScreenApp() {
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, aspect: [9, 16], quality: 0.4,
+      allowsEditing: true, 
+      aspect: [9, 16], 
+      quality: 0.4,
     });
+    
     if (!result.canceled) {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setChatBgImage(result.assets[0].uri);
+      setIsLoading(true);
+      
+      setTimeout(() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setChatBgImage(result.assets[0].uri);
+        setIsLoading(false);
+      }, 600);
     }
   };
-
-  
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -152,7 +160,6 @@ export default function AppearanceScreenApp() {
           ))}
         </View>
 
-        {/* WALLPAPER CHAT */}
         <Text style={[styles.secTitle, { color: theme.subText, marginTop: 24 }]}>{t.wall_title}</Text>
         <Pressable onPress={pickImage} style={[styles.rowGroup, styles.wallpaperRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.wallpaperLeft}>
@@ -168,6 +175,7 @@ export default function AppearanceScreenApp() {
         </Pressable>
 
       </ScrollView>
+      <LoadingSpinnerApp visible={isLoading} />
     </SafeAreaView>
   );
 }

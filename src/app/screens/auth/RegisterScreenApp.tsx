@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, LayoutAnimation, Keyboard } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
-import { RegisterService } from '@/services/RegisterService';
+import { RegisterService } from '@/services/auth/RegisterService';
 import AuthLayout from '@/app/layouts/AuthLayout';
 import InputApp from '@/components/ui/InputApp';
 import CustomSelectApp, { SelectOption } from '@/components/ui/CustomSelectApp';

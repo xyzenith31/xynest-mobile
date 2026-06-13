@@ -3,8 +3,8 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, Keyboard, Animated
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AuthLayout from '../../layouts/AuthLayout';
-import { LoginService } from '@/services/LoginService';
-import { VerifyService } from '@/services/VerifyService';
+import { LoginService } from '@/services/auth/LoginService';
+import { VerifyService } from '@/services/auth/VerifyService';
 import NotificationInteractive, { NotificationType } from '@/components/ui/NotificationInteractiveApp';
 import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 

@@ -12,6 +12,7 @@ SplashScreen.preventAutoHideAsync();
 LogBox.ignoreLogs([
   /setLayoutAnimationEnabledExperimental/,
   /ViewPropTypes will be removed/,
+  /SafeAreaView has been deprecated/,
 ]);
 
 export default function RootLayout() {

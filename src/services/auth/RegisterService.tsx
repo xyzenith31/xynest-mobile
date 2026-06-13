@@ -1,4 +1,4 @@
-import { API_URL } from './ServiceConfiguration';
+import { API_URL } from '../ServiceConfiguration';
 
 export class RegisterService {
   static async register(data: any) {

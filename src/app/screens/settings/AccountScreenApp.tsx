@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { UserService } from '../../../services/UserService';
+import { UserService } from '../../../services/auth/UserService';
 import { authDb } from '../../../databases/AuthDatabase';
 import { Avatar } from '../../../components/ux/Avatar';
 import LoadingSpinnerApp from '../../../components/ui/LoadingSpinnerApp';

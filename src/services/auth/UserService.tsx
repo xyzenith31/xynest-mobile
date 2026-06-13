@@ -1,5 +1,5 @@
-import { API_URL } from './ServiceConfiguration';
-import { authDb } from '../databases/AuthDatabase';
+import { API_URL } from '../ServiceConfiguration';
+import { authDb } from '../../databases/AuthDatabase';
 
 export class UserService {
   static async logout() {

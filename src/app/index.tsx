@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import { useRouter, useRootNavigationState } from 'expo-router';
-import { DeviceService } from '@/services/DeviceService';
+import { DeviceService } from '@/services/auth/DeviceService';
 import SplashScreenApp from './screens/other/SplashScreenApp';
 import * as SplashScreen from 'expo-splash-screen';
 

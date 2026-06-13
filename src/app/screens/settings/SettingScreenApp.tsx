@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, Animated, ScrollView, Pressable } from 'react-n
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { authDb, UserSession } from '@/databases/AuthDatabase';
-import { UserService } from '@/services/UserService';
+import { UserService } from '@/services/auth/UserService';
 import AppLayout from '../../layouts/AppLayout';
 import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 import NotificationInteractiveApp, { NotificationButton } from '@/components/ui/NotificationInteractiveApp';

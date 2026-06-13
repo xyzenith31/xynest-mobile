@@ -6,6 +6,7 @@ import { settingDict } from '../language/SettingScreenAppLanguage';
 import { appLayoutDict } from '../language/AppLayoutLanguage';
 import { accountScreenDict } from '../language/AccountScreenAppLanguage';
 import { notFoundDict } from '../language/NotFoundScreenAppLanguage';
+import { donationDict } from '../language/DonationScreenAppLanguage';
 
 export type LangCode = 'id' | 'en' | 'zh' | 'ja' | 'th' | 'vi';
 
@@ -20,6 +21,7 @@ interface LanguageContextType {
   t_appLayout: any;
   t_account: any;
   t_notFound: any;
+  t_donation: any;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -61,6 +63,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
   const t_appLayout = appLayoutDict[language] || appLayoutDict['id'];
   const t_account = accountScreenDict[language] || accountScreenDict['id']; 
   const t_notFound = notFoundDict[language] || notFoundDict['id'];
+  const t_donation = donationDict[language] || donationDict['id'];
 
   return (
     <LanguageContext.Provider value={{ 
@@ -74,6 +77,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
       t_appLayout,
       t_account,
       t_notFound,
+      t_donation,
     }}>
       {children}
     </LanguageContext.Provider>

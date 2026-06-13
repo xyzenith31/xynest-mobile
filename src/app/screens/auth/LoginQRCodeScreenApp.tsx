@@ -5,7 +5,7 @@ import { Stack, useRouter } from 'expo-router';
 import * as Device from 'expo-device';
 import { Ionicons } from '@expo/vector-icons';
 import AuthLayout from '../../layouts/AuthLayout';
-import { LoginService } from '@/services/LoginService';
+import { LoginService } from '@/services/auth/LoginService';
 import NotificationInteractive, { NotificationType } from '@/components/ui/NotificationInteractiveApp';
 import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 

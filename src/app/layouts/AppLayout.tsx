@@ -8,8 +8,8 @@ import * as Location from 'expo-location';
 import * as Battery from 'expo-battery';
 import * as Device from 'expo-device';
 import NetInfo from '@react-native-community/netinfo';
-import { DeviceService } from '@/services/DeviceService';
-import { UserService } from '@/services/UserService';
+import { DeviceService } from '@/services/auth/DeviceService';
+import { UserService } from '@/services/auth/UserService';
 import { BannedService } from '@/services/admin/BannedService';
 import { authDb } from '@/databases/AuthDatabase';
 import NotificationInteractive, { NotificationButton } from '@/components/ui/NotificationInteractiveApp';
@@ -60,7 +60,6 @@ export default function AppLayout({ children, title, scrollable = true }: AppLay
   const [batteryLevel, setBatteryLevel] = useState<number>(100);
   const [bluetoothOn, setBluetoothOn] = useState(true);
 
-  // Setup animasi looping tanda tarik
   useEffect(() => {
     Animated.loop(
       Animated.sequence([

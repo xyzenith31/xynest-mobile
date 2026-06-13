@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authDb, UserSession } from '@/databases/AuthDatabase';
-import { DeviceService } from '@/services/DeviceService';
-import { UserService } from '@/services/UserService';
+import { DeviceService } from '@/services/auth/DeviceService';
+import { UserService } from '@/services/auth/UserService';
 import AppLayout from '../../layouts/AppLayout';
 
 export default function HomeScreenApp() {

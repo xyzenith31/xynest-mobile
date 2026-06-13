@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Keyboard, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LoginService } from '@/services/LoginService';
+import { LoginService } from '@/services/auth/LoginService';
 import { BannedService } from '@/services/admin/BannedService';
 import AuthLayout from '@/app/layouts/AuthLayout';
 import InputApp from '@/components/ui/InputApp';
