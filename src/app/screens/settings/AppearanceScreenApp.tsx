@@ -19,7 +19,7 @@ export default function AppearanceScreenApp() {
   const { themeMode, setThemeMode, isDarkMode, accentColor, setAccentColor, textSize, setTextSize, theme, loading: appearanceLoading } = useAppearance();
   const { t_appearance } = useLanguage();
   const [chatBgImage, setChatBgImage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // State untuk mengontrol spinner
+  const [isLoading, setIsLoading] = useState(false);
   const t = t_appearance;
 
   const TEXT_SIZES = [

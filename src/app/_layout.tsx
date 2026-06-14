@@ -1,5 +1,3 @@
-// xynest-mobile/src/app/_layout.tsx
-
 import React from 'react';
 import { LogBox } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
@@ -30,7 +28,7 @@ export default function RootLayout() {
               screenOptions={{ 
                 headerShown: false, 
                 contentStyle: { backgroundColor: themeBackgroundColor },
-                animation: 'slide_from_right' // Default stack animation
+                animation: 'slide_from_right'
               }}
             >
               <Stack.Screen name="index" options={{ animation: 'none' }} />
@@ -38,8 +36,6 @@ export default function RootLayout() {
               <Stack.Screen name="screens/auth/RegisterScreenApp" options={{ presentation: 'transparentModal', animation: 'none' }} />
               <Stack.Screen name="screens/auth/VerificationScreenApp" options={{ animation: 'fade' }} />
               <Stack.Screen name="screens/other/HomeScreenApp" options={{ animation: 'fade' }} />
-              
-              {/* === TAMBAHKAN STACK SCREEN SETTINGS DI SINI AGAR BISA DITIMPA/OVERLAY === */}
               <Stack.Screen name="screens/settings/SettingScreenApp" options={{ animation: 'fade' }} />
               <Stack.Screen name="screens/settings/AccountScreenApp" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="screens/settings/AppearanceScreenApp" options={{ animation: 'slide_from_right' }} />

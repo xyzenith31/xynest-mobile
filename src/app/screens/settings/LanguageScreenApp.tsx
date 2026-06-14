@@ -5,16 +5,13 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppearance } from '../../../utils/tools/AppearanceApp';
 import { useLanguage, LangCode } from '../../../utils/tools/LanguageApp'; 
-import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp'; // <-- IMPORT SPINNER
+import LoadingSpinnerApp from '@/components/ui/LoadingSpinnerApp';
 
-// NOTE: setLayoutAnimationEnabledExperimental is a no-op in React Native New Architecture
-// Keeping the check to suppress warnings when using LayoutAnimation on Android
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     try {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     } catch (e) {
-      // Silently fail if New Architecture doesn't support it
     }
   }
 }
